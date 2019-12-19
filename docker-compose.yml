@@ -22,16 +22,6 @@ services:
     tty: true
     environment:
       TZ: Asia/Tokyo
-      DB_DBMS: mysql
-      DB_PASS: password
-      DB_NAME: post_DB
-      DB_PORT: 3306
-      DB_HOST: post-db
-      DB_USER: root
-      DB_CONN_OPT: charset=utf8mb4&parseTime=True&loc=Local
-      TIMEOUT: 2
-      LISTEN_PORT: 50051
-      DEBUG: "true"
     ports:
       - "50051:50051"
       

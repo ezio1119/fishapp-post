@@ -26,7 +26,7 @@ type config struct {
 		Debug   bool
 	}
 	Auth struct {
-		Jwtkey      string
+		Jwtkey string
 	}
 }
 
