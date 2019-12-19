@@ -46,6 +46,7 @@ func main() {
 	gserver := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			middL.LoggerInterceptor(),
+			middL.AuthInterceptor(),
 		)),
 	)
 	_postGrpcDeliver.NewPostServerGrpc(gserver, postUcase)
