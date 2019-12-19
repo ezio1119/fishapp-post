@@ -25,7 +25,6 @@ func NewPostServerGrpc(gserver *grpc.Server, us post.Usecase) {
 	reflection.Register(gserver)
 }
 
-// FetchPost will fetch the post based on given params
 func (s *server) transformPostRPC(po *models.Post) (*post_grpc.Post, error) {
 	updatedAt, err := ptypes.TimestampProto(po.UpdatedAt)
 	if err != nil {

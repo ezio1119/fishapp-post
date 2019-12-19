@@ -4,13 +4,15 @@ import (
 	"database/sql"
 	"log"
 	"net"
-	"os"
 	"time"
 
+	"github.com/ezio1119/fishapp-post/middleware"
 	_postGrpcDeliver "github.com/ezio1119/fishapp-post/post/delivery/grpc"
 	_postRepo "github.com/ezio1119/fishapp-post/post/repository"
 	_postUcase "github.com/ezio1119/fishapp-post/post/usecase"
 	_ "github.com/go-sql-driver/mysql"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
 	"github.com/kelseyhightower/envconfig"
 	"google.golang.org/grpc"
 )
@@ -25,6 +27,7 @@ type env struct {
 	DbConnOpt  string `required:"true" split_words:"true"`
 	Timeout    int64  `required:"true"`
 	ListenPort string `required:"true" split_words:"true"`
+	Debug      bool   `required:"true"`
 }
 
 func main() {
@@ -41,7 +44,6 @@ func main() {
 	err = dbConn.Ping()
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
 
 	defer func() {
@@ -54,8 +56,15 @@ func main() {
 	postRepo := _postRepo.NewMysqlPostRepository(dbConn)
 	timeoutContext := time.Duration(env.Timeout) * time.Second
 	postUcase := _postUcase.NewPostUsecase(postRepo, timeoutContext)
+	middL := middleware.InitMiddleware()
 
-	gserver := grpc.NewServer()
+	gserver := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			middL.LoggerInterceptor(env.Debug),
+			grpc_validator.UnaryServerInterceptor(),
+			middL.RecoveryInterceptor(),
+		)),
+	)
 	_postGrpcDeliver.NewPostServerGrpc(gserver, postUcase)
 
 	list, err := net.Listen("tcp", ":"+env.ListenPort)
