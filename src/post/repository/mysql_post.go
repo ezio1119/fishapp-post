@@ -36,9 +36,9 @@ func (m *mysqlPostRepository) fetch(ctx context.Context, query string, args ...i
 			&p.Id,
 			&p.Title,
 			&p.Content,
+			&p.UserId,
 			&p.CreatedAt,
 			&p.UpdatedAt,
-			&p.UserId,
 		)
 		if err != nil {
 			return nil, err
@@ -50,7 +50,7 @@ func (m *mysqlPostRepository) fetch(ctx context.Context, query string, args ...i
 }
 
 func (m *mysqlPostRepository) GetList(ctx context.Context, datetime time.Time, num int64) ([]*models.Post, error) {
-	query := `SELECT id, title, content, created_at, updated_at, user_id
+	query := `SELECT id, title, content, user_id, created_at, updated_at
 							FROM posts WHERE created_at > ? ORDER BY created_at DESC LIMIT ? `
 	res, err := m.fetch(ctx, query, datetime, num)
 	if err != nil {
@@ -60,7 +60,7 @@ func (m *mysqlPostRepository) GetList(ctx context.Context, datetime time.Time, n
 }
 
 func (m *mysqlPostRepository) GetByID(ctx context.Context, id int64) (*models.Post, error) {
-	query := `SELECT id, title, content, created_at, updated_at, user_id
+	query := `SELECT id, title, content, user_id, created_at, updated_at
   						FROM posts WHERE id = ?`
 	list, err := m.fetch(ctx, query, id)
 	if err != nil {
@@ -73,12 +73,12 @@ func (m *mysqlPostRepository) GetByID(ctx context.Context, id int64) (*models.Po
 	return res, nil
 }
 func (m *mysqlPostRepository) Create(ctx context.Context, p *models.Post) error {
-	query := `INSERT posts SET title=?, content=?, user_id=?`
+	query := `INSERT posts SET title=?, content=?, user_id=?, created_at=?, updated_at=?`
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
-	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.UserId)
+	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.UserId, p.CreatedAt, p.UpdatedAt)
 	if err != nil {
 		return err
 	}
@@ -92,14 +92,13 @@ func (m *mysqlPostRepository) Create(ctx context.Context, p *models.Post) error 
 }
 
 func (m *mysqlPostRepository) Update(ctx context.Context, p *models.Post) error {
-	query := `UPDATE posts SET title=?, content=? WHERE id = ?`
-
+	query := `UPDATE posts SET title=?, content=?, updated_at=? WHERE id = ?`
 	stmt, err := m.Conn.PrepareContext(ctx, query)
 	if err != nil {
 		return nil
 	}
 
-	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.Id)
+	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.UpdatedAt, p.Id)
 	if err != nil {
 		return err
 	}
@@ -107,11 +106,8 @@ func (m *mysqlPostRepository) Update(ctx context.Context, p *models.Post) error 
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return status.Error(codes.Unknown, fmt.Sprintf("No affected rows"))
-	}
-	if rows > 1 {
-		return status.Error(codes.Unknown, "More affected rows than expected")
+	if rows != 1 {
+		return status.Error(codes.Unknown, fmt.Sprintf("Weird  Behaviour. Total Affected: %d", rows))
 	}
 	return nil
 }
@@ -131,11 +127,8 @@ func (m *mysqlPostRepository) Delete(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
-		return status.Error(codes.Unknown, fmt.Sprintf("No affected rows"))
-	}
-	if rows > 1 {
-		return status.Error(codes.Unknown, "More affected rows than expected")
+	if rows != 1 {
+		return status.Error(codes.Unknown, fmt.Sprintf("Weird  Behaviour. Total Affected: %d", rows))
 	}
 	return nil
 }

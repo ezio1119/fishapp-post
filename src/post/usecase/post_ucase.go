@@ -6,6 +6,8 @@ import (
 
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/post"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type postUsecase struct {
@@ -55,15 +57,12 @@ func (p *postUsecase) Create(ctx context.Context, post *models.Post) error {
 	ctx, cancel := context.WithTimeout(ctx, p.contextTimeout)
 	defer cancel()
 
+	now := time.Now()
+	post.CreatedAt = now
+	post.UpdatedAt = now
 	if err := p.postRepo.Create(ctx, post); err != nil {
 		return err
 	}
-	res, err := p.postRepo.GetByID(ctx, post.Id)
-	if err != nil {
-		return err
-	}
-	post.CreatedAt = res.CreatedAt
-	post.UpdatedAt = res.UpdatedAt
 	return nil
 }
 
@@ -71,22 +70,32 @@ func (p *postUsecase) Update(ctx context.Context, post *models.Post) error {
 	ctx, cancel := context.WithTimeout(ctx, p.contextTimeout)
 	defer cancel()
 
-	if err := p.postRepo.Update(ctx, post); err != nil {
-		return err
-	}
 	res, err := p.postRepo.GetByID(ctx, post.Id)
 	if err != nil {
 		return err
 	}
+	if res.UserId != post.UserId {
+		return status.Error(codes.Unauthenticated, "do not have permission to update this post")
+	}
+	now := time.Now()
+	post.UpdatedAt = now
+	if err := p.postRepo.Update(ctx, post); err != nil {
+		return err
+	}
 	post.CreatedAt = res.CreatedAt
-	post.UpdatedAt = res.UpdatedAt
-	post.UserId = res.UserId
 	return nil
 }
 
-func (p *postUsecase) Delete(ctx context.Context, id int64) error {
+func (p *postUsecase) Delete(ctx context.Context, id int64, userID int64) error {
 	ctx, cancel := context.WithTimeout(ctx, p.contextTimeout)
 	defer cancel()
 
+	res, err := p.postRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if res.UserId != userID {
+		return status.Error(codes.Unauthenticated, "do not have permission to delete this post")
+	}
 	return p.postRepo.Delete(ctx, id)
 }
