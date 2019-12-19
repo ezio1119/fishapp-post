@@ -1,0 +1,14 @@
+db:
+  dbms: mysql
+  name: post_DB
+  user: root
+  pass: password
+  host: post-db
+  port: 3306
+  conn_opt: charset=utf8mb4&parseTime=True&loc=Local
+sv:
+  timeout: 2
+  port: 50051
+  debug: true
+auth:
+  jwtkey: jwtkey
