@@ -25,10 +25,13 @@ services:
     ports:
       - "50051:50051"
       
-  # grpcurl:
-  #   image: networld/grpcurl
-  #   command: /grpcurl -plaintext -d '{}' -H "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NzczNDQ1NzEsImlzcyI6InJlZnJlc2hUb2tlbiIsInN1YiI6IjIzIn0.w0gAwAkMymK6iZxwjENP7AqsvEHgmLw3lqN2f6bWw1I" post:50051 post_grpc.PostService/Create
-  #   tty: true
+  grpcurl:
+    image: networld/grpcurl
+    command: /grpcurl -plaintext -d '{"id":3}' -H "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1Nzc1OTgxNjcsImlzcyI6InJlZnJlc2hUb2tlbiIsInN1YiI6IjIxIn0.tazKOmhO_iqve-nNkyUJG60QcMgPAkQHyLY_fF9Ovak" post:50051 post_grpc.PostService/Delete
+    tty: true
+  grpc_cli: 
+    image: namely/grpc-cli
+    command: call post:50051  "datetime:{seconds:1570744832, nanos:940764000}, num:3"
 volumes:
   post-data:
     driver: local

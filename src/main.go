@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/ezio1119/fishapp-post/conf"
+	"github.com/ezio1119/fishapp-post/middleware"
 	_postGrpcDeliver "github.com/ezio1119/fishapp-post/post/delivery/grpc"
 	_postRepo "github.com/ezio1119/fishapp-post/post/repository"
 	_postUcase "github.com/ezio1119/fishapp-post/post/usecase"
 	_ "github.com/go-sql-driver/mysql"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 )
 
@@ -39,7 +41,16 @@ func main() {
 	timeoutContext := time.Duration(conf.C.Sv.Timeout) * time.Second
 	postUcase := _postUcase.NewPostUsecase(postRepo, timeoutContext)
 
-	gserver := grpc.NewServer()
+	middL := middleware.InitMiddleware()
+
+	gserver := grpc.NewServer(
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			middL.LoggerInterceptor(),
+			middL.AuthInterceptor(),
+			middL.ValidatorInterceptor(),
+			middL.RecoveryInterceptor(),
+		)),
+	)
 	_postGrpcDeliver.NewPostServerGrpc(gserver, postUcase)
 
 	list, err := net.Listen("tcp", ":"+conf.C.Sv.Port)

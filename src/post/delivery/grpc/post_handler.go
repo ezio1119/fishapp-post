@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/golang/protobuf/ptypes"
 
@@ -44,30 +43,12 @@ func (s *server) transformPostRPC(po *models.Post) (*post_grpc.Post, error) {
 	}, nil
 }
 
-func (s *server) transformPostData(po *post_grpc.Post) (*models.Post, error) {
-	updatedAt, err := ptypes.Timestamp(po.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	createdAt, err := ptypes.Timestamp(po.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &models.Post{
-		Id:        po.Id,
-		Title:     po.Title,
-		Content:   po.Content,
-		UpdatedAt: updatedAt,
-		CreatedAt: createdAt,
-		UserId:    po.UserId,
-	}, nil
-}
-
-func (s *server) Create(ctx context.Context, in *post_grpc.Post) (*post_grpc.Post, error) {
+func (s *server) Create(ctx context.Context, in *post_grpc.CreateReq) (*post_grpc.Post, error) {
+	userID := ctx.Value("userID").(int64)
 	post := &models.Post{
 		Title:   in.Title,
 		Content: in.Content,
-		UserId:  in.UserId,
+		UserId:  userID,
 	}
 	if err := s.PUsecase.Create(ctx, post); err != nil {
 		return nil, err
@@ -84,7 +65,6 @@ func (s *server) GetByID(ctx context.Context, in *post_grpc.ID) (*post_grpc.Post
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("%+v", post)
 	postRPC, err := s.transformPostRPC(post)
 	if err != nil {
 		return nil, err
@@ -114,11 +94,13 @@ func (s *server) GetList(ctx context.Context, in *post_grpc.ListReq) (*post_grpc
 	}, nil
 }
 
-func (s *server) Update(ctx context.Context, in *post_grpc.Post) (*post_grpc.Post, error) {
+func (s *server) Update(ctx context.Context, in *post_grpc.UpdateReq) (*post_grpc.Post, error) {
+	userID := ctx.Value("userID").(int64)
 	post := &models.Post{
 		Id:      in.Id,
 		Title:   in.Title,
 		Content: in.Content,
+		UserId:  userID,
 	}
 	if err := s.PUsecase.Update(ctx, post); err != nil {
 		return nil, err
@@ -131,7 +113,8 @@ func (s *server) Update(ctx context.Context, in *post_grpc.Post) (*post_grpc.Pos
 }
 
 func (s *server) Delete(ctx context.Context, in *post_grpc.ID) (*post_grpc.DeleteRes, error) {
-	if err := s.PUsecase.Delete(ctx, in.Id); err != nil {
+	userID := ctx.Value("userID").(int64)
+	if err := s.PUsecase.Delete(ctx, in.Id, userID); err != nil {
 		return nil, err
 	}
 	return &post_grpc.DeleteRes{
