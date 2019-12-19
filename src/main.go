@@ -47,6 +47,7 @@ func main() {
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			middL.LoggerInterceptor(),
 			middL.AuthInterceptor(),
+			middL.ValidatorInterceptor(),
 			middL.RecoveryInterceptor(),
 		)),
 	)
