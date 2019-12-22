@@ -149,6 +149,13 @@ func (m *CreateReq) Validate() error {
 		}
 	}
 
+	if m.GetUserId() < 1 {
+		return CreateReqValidationError{
+			field:  "UserId",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
 	return nil
 }
 
@@ -231,6 +238,13 @@ func (m *UpdateReq) Validate() error {
 		return UpdateReqValidationError{
 			field:  "Content",
 			reason: "value length must be between 1 and 2000 runes, inclusive",
+		}
+	}
+
+	if m.GetUserId() < 1 {
+		return UpdateReqValidationError{
+			field:  "UserId",
+			reason: "value must be greater than or equal to 1",
 		}
 	}
 
@@ -368,6 +382,84 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ListReqValidationError{}
+
+// Validate checks the field values on DeleteReq with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *DeleteReq) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if m.GetId() < 1 {
+		return DeleteReqValidationError{
+			field:  "Id",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
+	if m.GetUserId() < 1 {
+		return DeleteReqValidationError{
+			field:  "UserId",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
+	return nil
+}
+
+// DeleteReqValidationError is the validation error returned by
+// DeleteReq.Validate if the designated constraints aren't met.
+type DeleteReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e DeleteReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e DeleteReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e DeleteReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e DeleteReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e DeleteReqValidationError) ErrorName() string { return "DeleteReqValidationError" }
+
+// Error satisfies the builtin error interface
+func (e DeleteReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sDeleteReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = DeleteReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = DeleteReqValidationError{}
 
 // Validate checks the field values on ID with the rules defined in the proto
 // definition for this message. If any rules are violated, an error is returned.

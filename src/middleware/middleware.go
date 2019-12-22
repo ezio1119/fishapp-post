@@ -7,7 +7,6 @@ import (
 type Middleware interface {
 	LoggerInterceptor() grpc.UnaryServerInterceptor
 	RecoveryInterceptor() grpc.UnaryServerInterceptor
-	AuthInterceptor() grpc.UnaryServerInterceptor
 	ValidatorInterceptor() grpc.UnaryServerInterceptor
 }
 
