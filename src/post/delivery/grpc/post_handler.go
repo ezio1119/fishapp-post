@@ -44,11 +44,10 @@ func (s *server) transformPostRPC(po *models.Post) (*post_grpc.Post, error) {
 }
 
 func (s *server) Create(ctx context.Context, in *post_grpc.CreateReq) (*post_grpc.Post, error) {
-	userID := ctx.Value("userID").(int64)
 	post := &models.Post{
 		Title:   in.Title,
 		Content: in.Content,
-		UserId:  userID,
+		UserId:  in.UserId,
 	}
 	if err := s.PUsecase.Create(ctx, post); err != nil {
 		return nil, err
@@ -95,12 +94,11 @@ func (s *server) GetList(ctx context.Context, in *post_grpc.ListReq) (*post_grpc
 }
 
 func (s *server) Update(ctx context.Context, in *post_grpc.UpdateReq) (*post_grpc.Post, error) {
-	userID := ctx.Value("userID").(int64)
 	post := &models.Post{
 		Id:      in.Id,
 		Title:   in.Title,
 		Content: in.Content,
-		UserId:  userID,
+		UserId:  in.UserId,
 	}
 	if err := s.PUsecase.Update(ctx, post); err != nil {
 		return nil, err
@@ -112,9 +110,8 @@ func (s *server) Update(ctx context.Context, in *post_grpc.UpdateReq) (*post_grp
 	return postRPC, nil
 }
 
-func (s *server) Delete(ctx context.Context, in *post_grpc.ID) (*post_grpc.DeleteRes, error) {
-	userID := ctx.Value("userID").(int64)
-	if err := s.PUsecase.Delete(ctx, in.Id, userID); err != nil {
+func (s *server) Delete(ctx context.Context, in *post_grpc.DeleteReq) (*post_grpc.DeleteRes, error) {
+	if err := s.PUsecase.Delete(ctx, in.Id, in.UserId); err != nil {
 		return nil, err
 	}
 	return &post_grpc.DeleteRes{
