@@ -10,7 +10,9 @@ services:
       MYSQL_DATABASE: post_DB
       TZ: Asia/Tokyo
     ports:
-      - "4306:3306"
+      - "5306:3306"
+    networks:
+      - api-gateway_default
   post:
     build:
       context: .
@@ -24,14 +26,22 @@ services:
       TZ: Asia/Tokyo
     ports:
       - "50051:50051"
-      
-  grpcurl:
-    image: networld/grpcurl
-    command: /grpcurl -plaintext -d '{"id":3}' -H "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1Nzc1OTgxNjcsImlzcyI6InJlZnJlc2hUb2tlbiIsInN1YiI6IjIxIn0.tazKOmhO_iqve-nNkyUJG60QcMgPAkQHyLY_fF9Ovak" post:50051 post_grpc.PostService/Delete
-    tty: true
+    networks:
+      - api-gateway_default
+
+  # grpcurl:
+  #   image: networld/grpcurl
+  #   command: /grpcurl -plaintext -d '{"id":3}' -H "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1Nzc1OTgxNjcsImlzcyI6InJlZnJlc2hUb2tlbiIsInN1YiI6IjIxIn0.tazKOmhO_iqve-nNkyUJG60QcMgPAkQHyLY_fF9Ovak" post:50051 post_grpc.PostService/Delete
+  #   tty: true
   grpc_cli: 
     image: namely/grpc-cli
-    command: call post:50051  "datetime:{seconds:1570744832, nanos:940764000}, num:3"
+    command: call post:50051 entry_post_grpc.EntryService.Delete "id:7, user_id:7"
+    networks:
+      - api-gateway_default
 volumes:
   post-data:
     driver: local
+  
+networks:
+  api-gateway_default:
+    external: true

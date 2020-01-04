@@ -12,27 +12,26 @@ import (
 
 type config struct {
 	Db struct {
-		Dbms    string
-		Name    string
-		User    string
-		Pass    string
-		Host    string
-		Port    string
-		ConnOpt string `mapstructure:"conn_opt"`
+		Dbms                 string
+		Name                 string
+		User                 string
+		Pass                 string
+		Net                  string
+		Host                 string
+		Port                 string
+		Parsetime            bool
+		AllowNativePasswords bool
 	}
 	Sv struct {
 		Timeout int64
 		Port    string
 		Debug   bool
 	}
-	Auth struct {
-		Jwtkey string
-	}
 }
 
 var C config
 
-func Readconf() {
+func init() {
 
 	viper.SetConfigName("conf")
 	viper.SetConfigType("yml")
