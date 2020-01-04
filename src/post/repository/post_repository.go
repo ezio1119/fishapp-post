@@ -12,17 +12,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type mysqlPostRepository struct {
-	Conn *sql.DB
+type postRepository struct {
+	conn *sql.DB
 }
 
-// NewMysqlPostRepository will create an object that represent the post.Repository interface
-func NewMysqlPostRepository(Conn *sql.DB) post.Repository {
-	return &mysqlPostRepository{Conn}
+func NewPostRepository(conn *sql.DB) post.Repository {
+	return &postRepository{conn}
 }
 
-func (m *mysqlPostRepository) fetch(ctx context.Context, query string, args ...interface{}) ([]*models.Post, error) {
-	rows, err := m.Conn.QueryContext(ctx, query, args...)
+func (r *postRepository) fetch(ctx context.Context, query string, args ...interface{}) ([]*models.Post, error) {
+	rows, err := r.conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -33,10 +32,10 @@ func (m *mysqlPostRepository) fetch(ctx context.Context, query string, args ...i
 	for rows.Next() {
 		p := new(models.Post)
 		err = rows.Scan(
-			&p.Id,
+			&p.ID,
 			&p.Title,
 			&p.Content,
-			&p.UserId,
+			&p.UserID,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 		)
@@ -49,20 +48,20 @@ func (m *mysqlPostRepository) fetch(ctx context.Context, query string, args ...i
 	return result, nil
 }
 
-func (m *mysqlPostRepository) GetList(ctx context.Context, datetime time.Time, num int64) ([]*models.Post, error) {
+func (r *postRepository) GetList(ctx context.Context, datetime time.Time, num int64) ([]*models.Post, error) {
 	query := `SELECT id, title, content, user_id, created_at, updated_at
 							FROM posts WHERE created_at > ? ORDER BY created_at DESC LIMIT ? `
-	res, err := m.fetch(ctx, query, datetime, num)
+	res, err := r.fetch(ctx, query, datetime, num)
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func (m *mysqlPostRepository) GetByID(ctx context.Context, id int64) (*models.Post, error) {
+func (r *postRepository) GetByID(ctx context.Context, id int64) (*models.Post, error) {
 	query := `SELECT id, title, content, user_id, created_at, updated_at
   						FROM posts WHERE id = ?`
-	list, err := m.fetch(ctx, query, id)
+	list, err := r.fetch(ctx, query, id)
 	if err != nil {
 		return nil, err
 	}
@@ -72,13 +71,13 @@ func (m *mysqlPostRepository) GetByID(ctx context.Context, id int64) (*models.Po
 	res := list[0]
 	return res, nil
 }
-func (m *mysqlPostRepository) Create(ctx context.Context, p *models.Post) error {
+func (r *postRepository) Create(ctx context.Context, p *models.Post) error {
 	query := `INSERT posts SET title=?, content=?, user_id=?, created_at=?, updated_at=?`
-	stmt, err := m.Conn.PrepareContext(ctx, query)
+	stmt, err := r.conn.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
-	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.UserId, p.CreatedAt, p.UpdatedAt)
+	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.UserID, p.CreatedAt, p.UpdatedAt)
 	if err != nil {
 		return err
 	}
@@ -87,18 +86,18 @@ func (m *mysqlPostRepository) Create(ctx context.Context, p *models.Post) error 
 	if err != nil {
 		return err
 	}
-	p.Id = lastID
+	p.ID = lastID
 	return nil
 }
 
-func (m *mysqlPostRepository) Update(ctx context.Context, p *models.Post) error {
+func (r *postRepository) Update(ctx context.Context, p *models.Post) error {
 	query := `UPDATE posts SET title=?, content=?, updated_at=? WHERE id = ?`
-	stmt, err := m.Conn.PrepareContext(ctx, query)
+	stmt, err := r.conn.PrepareContext(ctx, query)
 	if err != nil {
 		return nil
 	}
 
-	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.UpdatedAt, p.Id)
+	result, err := stmt.ExecContext(ctx, p.Title, p.Content, p.UpdatedAt, p.ID)
 	if err != nil {
 		return err
 	}
@@ -112,9 +111,9 @@ func (m *mysqlPostRepository) Update(ctx context.Context, p *models.Post) error 
 	return nil
 }
 
-func (m *mysqlPostRepository) Delete(ctx context.Context, id int64) error {
+func (r *postRepository) Delete(ctx context.Context, id int64) error {
 	query := "DELETE FROM posts WHERE id = ?"
-	stmt, err := m.Conn.PrepareContext(ctx, query)
+	stmt, err := r.conn.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
