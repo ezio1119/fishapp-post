@@ -8,6 +8,7 @@ import (
 	"github.com/ezio1119/fishapp-post/entry/controllers/entry_post_grpc"
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/post"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -53,4 +54,31 @@ func (i *entryInteractor) Delete(ctx context.Context, id int64, userID int64) er
 		return status.Error(codes.PermissionDenied, "do not have permission to delete this entry")
 	}
 	return i.entryRepository.Delete(ctx, id)
+}
+
+func (i *entryInteractor) GetListByPostID(chanEntry chan *entry_post_grpc.Entry, postID int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), i.ctxTimeout)
+	defer cancel()
+	entries, err := i.entryRepository.GetListByPostID(ctx, postID)
+	if err != nil {
+		return err
+	}
+	eg, ctx := errgroup.WithContext(ctx)
+	for _, entry := range entries {
+		entry := entry
+		eg.Go(func() error {
+			entryProto, err := i.entryPresenter.TransformEntryProto(entry)
+			if err != nil {
+				return err
+			}
+			chanEntry <- entryProto
+			return nil
+		})
+	}
+	go func() {
+		eg.Wait()
+		close(chanEntry)
+	}()
+
+	return nil
 }

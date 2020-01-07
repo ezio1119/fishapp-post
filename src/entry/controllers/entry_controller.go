@@ -32,3 +32,16 @@ func (c *entryController) Delete(ctx context.Context, in *entry_post_grpc.Delete
 		Value: true,
 	}, nil
 }
+
+func (c *entryController) GetListByPostID(id *entry_post_grpc.ID, stream entry_post_grpc.EntryService_GetListByPostIDServer) error {
+	entryChan := make(chan *entry_post_grpc.Entry)
+	if err := c.entryInteractor.GetListByPostID(entryChan, id.PostId); err != nil {
+		return err
+	}
+	for entryProto := range entryChan {
+		if err := stream.Send(entryProto); err != nil {
+			return err
+		}
+	}
+	return nil
+}

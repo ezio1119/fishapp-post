@@ -10,4 +10,5 @@ type Repository interface {
 	Create(ctx context.Context, e *models.Entry) error
 	GetByID(ctx context.Context, id int64) (*models.Entry, error)
 	Delete(ctx context.Context, id int64) error
+	GetListByPostID(ctx context.Context, postID int64) ([]*models.Entry, error)
 }

@@ -7,6 +7,7 @@ import "google/protobuf/wrappers.proto";
 service EntryService {
   rpc Create(CreateReq) returns (Entry);
   rpc Delete(DeleteReq) returns (google.protobuf.BoolValue);
+  rpc GetListByPostID(ID) returns (stream Entry);
 }
 
 message Entry {
@@ -25,4 +26,8 @@ message CreateReq {
 message DeleteReq {
   int64 id = 1 [(validate.rules).int64.gte = 1];
   int64 user_id = 2 [(validate.rules).int64.gte = 1];
+}
+
+message ID {
+  int64 post_id = 1 [(validate.rules).int64.gte = 1];
 }

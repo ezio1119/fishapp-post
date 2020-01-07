@@ -10,4 +10,5 @@ import (
 type Usecase interface {
 	Create(ctx context.Context, e *models.Entry) (*entry_post_grpc.Entry, error)
 	Delete(ctx context.Context, id int64, userID int64) error
+	GetListByPostID(entryChan chan *entry_post_grpc.Entry, postID int64) error
 }
