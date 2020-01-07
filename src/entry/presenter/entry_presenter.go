@@ -22,6 +22,7 @@ func (*entryPresenter) TransformEntryProto(e *models.Entry) (*entry_post_grpc.En
 	if err != nil {
 		return nil, err
 	}
+
 	return &entry_post_grpc.Entry{
 		Id:        e.ID,
 		PostId:    e.PostID,

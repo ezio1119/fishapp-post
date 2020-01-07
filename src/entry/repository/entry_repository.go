@@ -80,7 +80,7 @@ func (r *entryRepository) GetByID(ctx context.Context, id int64) (*models.Entry,
 }
 
 func (r *entryRepository) Delete(ctx context.Context, id int64) error {
-	query := "DELETE FROM entries WHERE id = ?"
+	query := `DELETE FROM entries WHERE id = ?`
 	stmt, err := r.conn.PrepareContext(ctx, query)
 	if err != nil {
 		return err
@@ -98,4 +98,14 @@ func (r *entryRepository) Delete(ctx context.Context, id int64) error {
 		return status.Error(codes.Unknown, fmt.Sprintf("Weird  Behaviour. Total Affected: %d", rows))
 	}
 	return nil
+}
+
+func (r *entryRepository) GetListByPostID(ctx context.Context, postID int64) ([]*models.Entry, error) {
+	query := `SELECT id, post_id, user_id, created_at, updated_at
+	FROM entries WHERE post_id = ? ORDER BY created_at DESC`
+	res, err := r.fetch(ctx, query, postID)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
