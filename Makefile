@@ -7,7 +7,7 @@ sql:
 	migrate/migrate:latest create -ext sql -dir /sql ${ARG}
 
 sql-doc:
-	docker run --rm --net=api-gateway_default -v $(CURRENT_DIR)/migrate:/work ezio1119/tbls \
+	docker run --rm --net=api-gateway_default -v $(CURRENT_DIR)/db:/work ezio1119/tbls \
 	doc -f -t svg mysql://root:password@post-db:3306/post_DB ./
 
 proto-post:
