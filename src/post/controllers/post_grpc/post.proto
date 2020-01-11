@@ -6,11 +6,11 @@ import "google/protobuf/wrappers.proto";
 
 
 service PostService {
-  rpc Create(CreateReq) returns (Post);
-  rpc GetByID(ID) returns (Post);
-  rpc GetList(ListReq) returns (ListPost);
-  rpc Update(UpdateReq) returns (Post);
-  rpc Delete(DeleteReq) returns (google.protobuf.BoolValue);
+  rpc Create(CreateReq) returns (Post); // 投稿を作成
+  rpc GetByID(ID) returns (Post); // post_idで投稿を取得
+  rpc GetList(ListReq) returns (ListPost); // 取得件数と日時を指定して投稿を複数取得
+  rpc Update(UpdateReq) returns (Post); // 投稿を更新
+  rpc Delete(DeleteReq) returns (google.protobuf.BoolValue); // 投稿を削除
 }
 
 message Post {
@@ -23,7 +23,7 @@ message Post {
 }
 
 message CreateReq {
-  string title = 1 [(validate.rules).string = {min_len: 1, max_len: 20}];
+  string title = 1 [(validate.rules).string = {min_len: 1, max_len: 20}]; // 1文字以上20文字以下
   string content = 2 [(validate.rules).string = {min_len: 1, max_len: 2000}];
   int64 user_id= 3 [(validate.rules).int64.gte = 1];
 }

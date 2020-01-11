@@ -7,8 +7,8 @@ sql:
 	migrate/migrate:latest create -ext sql -dir /sql ${ARG}
 
 sql-doc:
-	docker run --rm --net=api-gateway_default -v $(CURRENT_DIR)/migrate:/work k1low/tbls \
-	doc mysql://root:password@post-db:3306/post_DB ./
+	docker run --rm --net=api-gateway_default -v $(CURRENT_DIR)/migrate:/work ezio1119/tbls \
+	doc -f mysql://root:password@post-db:3306/post_DB ./
 
 proto-post:
 	docker run --rm -v $(CURRENT_DIR)/src/post/controllers/post_grpc:$(CURRENT_DIR) -w $(CURRENT_DIR) thethingsindustries/protoc \
@@ -30,6 +30,9 @@ proto-entry:
 
 up:
 	$(DC) up
+
+ps:
+	$(DC) ps
 
 build:
 	$(DC) build

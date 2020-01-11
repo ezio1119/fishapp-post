@@ -36,7 +36,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| title | [string](#string) |  |  |
+| title | [string](#string) |  | 1文字以上20文字以下 |
 | content | [string](#string) |  |  |
 | user_id | [int64](#int64) |  |  |
 
@@ -158,11 +158,11 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| Create | [CreateReq](#post_grpc.CreateReq) | [Post](#post_grpc.Post) |  |
-| GetByID | [ID](#post_grpc.ID) | [Post](#post_grpc.Post) |  |
-| GetList | [ListReq](#post_grpc.ListReq) | [ListPost](#post_grpc.ListPost) |  |
-| Update | [UpdateReq](#post_grpc.UpdateReq) | [Post](#post_grpc.Post) |  |
-| Delete | [DeleteReq](#post_grpc.DeleteReq) | [.google.protobuf.BoolValue](#google.protobuf.BoolValue) |  |
+| Create | [CreateReq](#post_grpc.CreateReq) | [Post](#post_grpc.Post) | 投稿を作成 |
+| GetByID | [ID](#post_grpc.ID) | [Post](#post_grpc.Post) | post_idで投稿を取得 |
+| GetList | [ListReq](#post_grpc.ListReq) | [ListPost](#post_grpc.ListPost) | 取得件数と日時を指定して投稿を複数取得 |
+| Update | [UpdateReq](#post_grpc.UpdateReq) | [Post](#post_grpc.Post) | 投稿を更新 |
+| Delete | [DeleteReq](#post_grpc.DeleteReq) | [.google.protobuf.BoolValue](#google.protobuf.BoolValue) | 投稿を削除 |
 
  
 
