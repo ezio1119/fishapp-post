@@ -8,7 +8,7 @@ sql:
 
 sql-doc:
 	docker run --rm --net=api-gateway_default -v $(CURRENT_DIR)/migrate:/work ezio1119/tbls \
-	doc -f mysql://root:password@post-db:3306/post_DB ./
+	doc -f -t svg mysql://root:password@post-db:3306/post_DB ./
 
 proto-post:
 	docker run --rm -v $(CURRENT_DIR)/src/post/controllers/post_grpc:$(CURRENT_DIR) -w $(CURRENT_DIR) thethingsindustries/protoc \
