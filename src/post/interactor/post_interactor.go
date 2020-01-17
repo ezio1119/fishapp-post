@@ -7,8 +7,6 @@ import (
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/post"
 	"github.com/ezio1119/fishapp-post/post/controllers/post_grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type postInteractor struct {
@@ -58,7 +56,7 @@ func (p *postInteractor) Create(ctx context.Context, post *models.Post) (*post_g
 	return p.postPresenter.TransformPostProto(post)
 }
 
-func (p *postInteractor) Update(ctx context.Context, post *models.Post) (*post_grpc.Post, error) {
+func (p *postInteractor) Update(ctx context.Context, post *models.Post, userID int64) (*post_grpc.Post, error) {
 	ctx, cancel := context.WithTimeout(ctx, p.ctxTimeout)
 	defer cancel()
 
@@ -66,8 +64,8 @@ func (p *postInteractor) Update(ctx context.Context, post *models.Post) (*post_g
 	if err != nil {
 		return nil, err
 	}
-	if res.UserID != post.UserID {
-		return nil, status.Error(codes.PermissionDenied, "do not have permission to update this post")
+	if res.UserID != userID {
+		return nil, models.WrapOnPostInterErr(&models.UpdatePostPermissionDenied{PostID: post.ID, UserID: userID})
 	}
 	now := time.Now()
 	post.UpdatedAt = now
@@ -87,7 +85,7 @@ func (p *postInteractor) Delete(ctx context.Context, id int64, userID int64) err
 		return err
 	}
 	if res.UserID != userID {
-		return status.Error(codes.PermissionDenied, "do not have permission to delete this post")
+		return models.WrapOnPostInterErr(&models.DeletePostPermissionDenied{PostID: id, UserID: userID})
 	}
 	return p.postRepository.Delete(ctx, id)
 }

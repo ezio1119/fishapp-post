@@ -20,37 +20,52 @@ func NewPostController(pu post.Usecase) post_grpc.PostServiceServer {
 }
 
 func (c *postController) Create(ctx context.Context, in *post_grpc.CreateReq) (*post_grpc.Post, error) {
-	return c.postInteractor.Create(ctx, &models.Post{
+	post, err := c.postInteractor.Create(ctx, &models.Post{
 		Title:   in.Title,
 		Content: in.Content,
 		UserID:  in.UserId,
 	})
+	if err != nil {
+		return nil, models.WrapOnGrpcErr(err)
+	}
+	return post, nil
 }
 
 func (c *postController) GetByID(ctx context.Context, in *post_grpc.ID) (*post_grpc.Post, error) {
-	return c.postInteractor.GetByID(ctx, in.Id)
+	post, err := c.postInteractor.GetByID(ctx, in.Id)
+	if err != nil {
+		return nil, models.WrapOnGrpcErr(err)
+	}
+	return post, nil
 }
 
 func (c *postController) GetList(ctx context.Context, in *post_grpc.ListReq) (*post_grpc.ListPost, error) {
 	datetime, err := ptypes.Timestamp(in.Datetime)
 	if err != nil {
-		return nil, err
+		return nil, models.WrapOnGrpcErr(err)
 	}
-	return c.postInteractor.GetList(ctx, datetime, in.Num)
+	post, err := c.postInteractor.GetList(ctx, datetime, in.Num)
+	if err != nil {
+		return nil, models.WrapOnGrpcErr(err)
+	}
+	return post, nil
 }
 
 func (c *postController) Update(ctx context.Context, in *post_grpc.UpdateReq) (*post_grpc.Post, error) {
-	return c.postInteractor.Update(ctx, &models.Post{
+	post, err := c.postInteractor.Update(ctx, &models.Post{
 		ID:      in.Id,
 		Title:   in.Title,
 		Content: in.Content,
-		UserID:  in.UserId,
-	})
+	}, in.UserId)
+	if err != nil {
+		return nil, models.WrapOnGrpcErr(err)
+	}
+	return post, nil
 }
 
 func (c *postController) Delete(ctx context.Context, in *post_grpc.DeleteReq) (*wrappers.BoolValue, error) {
 	if err := c.postInteractor.Delete(ctx, in.Id, in.UserId); err != nil {
-		return nil, err
+		return nil, models.WrapOnGrpcErr(err)
 	}
 	return &wrappers.BoolValue{
 		Value: true,
