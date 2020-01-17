@@ -1,4 +1,6 @@
-ARG = ARG
+ARG = argument
+M = grpc_method
+Q = query
 DC = docker-compose
 CURRENT_DIR = $(shell pwd)
 
@@ -28,8 +30,17 @@ proto-entry:
 	--doc_out=markdown,README.md:./ \
 	entry_post.proto
 
+cli:
+		docker run --rm --net=api-gateway_default namely/grpc-cli \
+		call post:50051 post_grpc.PostService.$(M) "$(Q)" $(OPT)
+
+test:
+	$(DC) exec post sh -c "go test -v -coverprofile=cover.out -coverpkg=$(ARG) $(ARG) && \
+									go tool cover -html=cover.out -o ./cover.html" && \
+	open ./src/cover.html
+
 up:
-	$(DC) up
+	$(DC) up -d
 
 ps:
 	$(DC) ps
@@ -39,3 +50,9 @@ build:
 
 down:
 	$(DC) down
+
+exec:
+	$(DC) exec post sh
+
+logs:
+	$(DC) logs -f

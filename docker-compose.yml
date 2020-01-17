@@ -23,8 +23,6 @@ services:
     tty: true
     environment:
       TZ: Asia/Tokyo
-    ports:
-      - "50051:50051"
 
   # grpcurl:
   #   image: networld/grpcurl
