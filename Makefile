@@ -2,7 +2,7 @@ DC = docker-compose
 CURRENT_DIR = $(shell pwd)
 API = post
 
-sql-doc:
+sqldoc:
 	docker run --rm --net=api-gateway_default -v $(CURRENT_DIR)/db:/work ezio1119/tbls \
 	doc -f -t svg mysql://root:password@${API}-db:3306/${API}_DB ./
 
