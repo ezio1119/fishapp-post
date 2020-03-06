@@ -1,0 +1,7 @@
+*.pem
+Makefile
+.gitignore
+tmp
+Dockerfile.dev
+*.md
+.github

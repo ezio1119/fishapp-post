@@ -1,0 +1,14 @@
+db:
+  dbms: mysql
+  name: post_DB
+  user: root
+  pass: password
+  net: tcp
+  host: post-db
+  port: 3306
+  parsetime: true
+  allowNativePasswords: true
+sv:
+  timeout: 2
+  port: 50051
+  debug: true
