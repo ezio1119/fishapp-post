@@ -8,7 +8,7 @@ on:
 env:
   GKE_PROJECT: ${{ secrets.GKE_PROJECT }}
   GKE_CLUSTER: fishapp-gke-cluster
-  IMAGE: chat
+  IMAGE: post
 
 jobs:
   setup-build-publish:
