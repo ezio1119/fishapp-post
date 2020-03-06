@@ -10,27 +10,19 @@ services:
       MYSQL_DATABASE: post_DB
       TZ: Asia/Tokyo
     ports:
-      - "5306:3306"
+      - "7306:3306"
 
   post:
     build:
       context: .
-      dockerfile: Dockerfile.fresh
+      dockerfile: Dockerfile.dev
     volumes:
-      - ./src/.:/app
+      - .:/app
     depends_on:
       - post-db
     tty: true
     environment:
       TZ: Asia/Tokyo
-
-  # grpcurl:
-  #   image: networld/grpcurl
-  #   command: /grpcurl -plaintext -d '{"id":3}' -H "Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1Nzc1OTgxNjcsImlzcyI6InJlZnJlc2hUb2tlbiIsInN1YiI6IjIxIn0.tazKOmhO_iqve-nNkyUJG60QcMgPAkQHyLY_fF9Ovak" post:50051 post_grpc.PostService/Delete
-  #   tty: true
-  # grpc_cli: 
-  #   image: namely/grpc-cli
-  #   command: call post:50051 entry_post_grpc.EntryService.GetListByPostID "post_id:5"
 
 volumes:
   post-data:

@@ -1,41 +1,33 @@
-ARG = argument
-M = grpc_method
-Q = query
 DC = docker-compose
 CURRENT_DIR = $(shell pwd)
-
-sql:
-	docker run --rm -v $(CURRENT_DIR)/migrate/sql:/sql \
-	migrate/migrate:latest create -ext sql -dir /sql ${ARG}
+API = post
 
 sql-doc:
 	docker run --rm --net=api-gateway_default -v $(CURRENT_DIR)/db:/work ezio1119/tbls \
-	doc -f -t svg mysql://root:password@post-db:3306/post_DB ./
+	doc -f -t svg mysql://root:password@${API}-db:3306/${API}_DB ./
 
-proto-post:
-	docker run --rm -v $(CURRENT_DIR)/src/post/controllers/post_grpc:$(CURRENT_DIR) -w $(CURRENT_DIR) thethingsindustries/protoc \
-	-I. \
+proto:
+	docker run --rm -v $(CURRENT_DIR)/${API}/controllers/${API}_grpc:$(CURRENT_DIR) \
+	-v $(CURRENT_DIR)/schema/${API}:/schema \
+	-w $(CURRENT_DIR) thethingsindustries/protoc \
+	-I/schema \
 	-I/usr/include/github.com/envoyproxy/protoc-gen-validate \
 	--go_out=plugins=grpc:. \
 	--validate_out="lang=go:." \
-	--doc_out=markdown,README.md:./ \
-	post.proto
-
-proto-entry:
-	docker run --rm -v $(CURRENT_DIR)/src/entry/controllers/entry_post_grpc:$(CURRENT_DIR) -w $(CURRENT_DIR) thethingsindustries/protoc \
-	-I. \
-	-I/usr/include/github.com/envoyproxy/protoc-gen-validate \
-	--go_out=plugins=grpc:. \
-	--validate_out="lang=go:." \
-	--doc_out=markdown,README.md:./ \
-	entry_post.proto
+	--doc_out=markdown,README.md:/schema \
+	${API}.proto
 
 cli:
-		docker run --rm --net=api-gateway_default namely/grpc-cli \
-		call post:50051 post_grpc.PostService.$(M) "$(Q)" $(OPT)
+	docker run --rm --net=api-gateway_default namely/grpc-cli \
+	call ${API}:50051 ${API}_grpc.PostService.$(m) "$(q)" $(o)
+
+migrate:
+	docker run --rm -it --name migrate --net=api-gateway_default \
+	-v $(CURRENT_DIR)/db/sql:/sql migrate/migrate:latest \
+	-path /sql/ -database "mysql://root:password@tcp($(API)-db:3306)/$(API)_DB" up
 
 test:
-	$(DC) exec post sh -c "go test -v -coverprofile=cover.out -coverpkg=$(ARG) $(ARG) && \
+	$(DC) exec ${API} sh -c "go test -v -coverprofile=cover.out ./... && \
 									go tool cover -html=cover.out -o ./cover.html" && \
 	open ./src/cover.html
 
@@ -52,7 +44,7 @@ down:
 	$(DC) down
 
 exec:
-	$(DC) exec post sh
+	$(DC) exec ${API} sh
 
 logs:
-	$(DC) logs -f
+	$(DC) logs -f --tail 100
