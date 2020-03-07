@@ -17,7 +17,7 @@ func NewMysqlConn() *sql.DB {
 		Addr:                 conf.C.Db.Host + ":" + conf.C.Db.Port,
 		DBName:               conf.C.Db.Name,
 		ParseTime:            conf.C.Db.Parsetime,
-		Loc:                  time.Now().Location(),
+		Loc:                  time.Local,
 		AllowNativePasswords: conf.C.Db.AllowNativePasswords,
 	}
 
