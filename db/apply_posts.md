@@ -1,4 +1,4 @@
-# entries
+# apply_posts
 
 ## Description
 
@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE `entries` (
+CREATE TABLE `apply_posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `post_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -14,8 +14,8 @@ CREATE TABLE `entries` (
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `post_id` (`post_id`,`user_id`),
-  CONSTRAINT `entries_ibfk_1` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_ja_0900_as_cs
+  CONSTRAINT `apply_posts_ibfk_1` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_ja_0900_as_cs
 ```
 
 </details>
@@ -34,7 +34,7 @@ CREATE TABLE `entries` (
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| entries_ibfk_1 | FOREIGN KEY | FOREIGN KEY (post_id) REFERENCES posts (id) |
+| apply_posts_ibfk_1 | FOREIGN KEY | FOREIGN KEY (post_id) REFERENCES posts (id) |
 | post_id | UNIQUE | UNIQUE KEY post_id (post_id, user_id) |
 | PRIMARY | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -47,7 +47,7 @@ CREATE TABLE `entries` (
 
 ## Relations
 
-![er](entries.svg)
+![er](apply_posts.svg)
 
 ---
 

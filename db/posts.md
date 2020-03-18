@@ -10,11 +10,17 @@ CREATE TABLE `posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) COLLATE utf8mb4_ja_0900_as_cs NOT NULL,
   `content` varchar(5000) COLLATE utf8mb4_ja_0900_as_cs NOT NULL,
+  `fishing_spot_type_id` int(11) NOT NULL,
+  `prefecture_id` int(11) DEFAULT NULL,
+  `meeting_place_id` varchar(255) COLLATE utf8mb4_ja_0900_as_cs NOT NULL,
+  `meeting_at` datetime NOT NULL,
+  `max_apply` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_ja_0900_as_cs
+  PRIMARY KEY (`id`),
+  KEY `meeting_at` (`meeting_at`,`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_ja_0900_as_cs
 ```
 
 </details>
@@ -23,9 +29,14 @@ CREATE TABLE `posts` (
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | int(11) |  | false | [entries](entries.md) |  |  |
+| id | int(11) |  | false | [apply_posts](apply_posts.md) [posts_fish_types](posts_fish_types.md) |  |  |
 | title | varchar(255) |  | false |  |  |  |
 | content | varchar(5000) |  | false |  |  |  |
+| fishing_spot_type_id | int(11) |  | false |  |  |  |
+| prefecture_id | int(11) |  | true |  |  |  |
+| meeting_place_id | varchar(255) |  | false |  |  |  |
+| meeting_at | datetime |  | false |  |  |  |
+| max_apply | int(11) |  | false |  |  |  |
 | user_id | int(11) |  | false |  |  |  |
 | created_at | datetime |  | false |  |  |  |
 | updated_at | datetime |  | false |  |  |  |
@@ -40,6 +51,7 @@ CREATE TABLE `posts` (
 
 | Name | Definition |
 | ---- | ---------- |
+| meeting_at | KEY meeting_at (meeting_at, id) USING BTREE |
 | PRIMARY | PRIMARY KEY (id) USING BTREE |
 
 ## Relations
