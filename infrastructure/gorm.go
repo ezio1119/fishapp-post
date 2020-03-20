@@ -1,15 +1,15 @@
 package infrastructure
 
 import (
-	"database/sql"
 	"log"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/conf"
 	"github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
 )
 
-func NewMysqlConn() *sql.DB {
+func NewGormDB() *gorm.DB {
 	mysqlConf := &mysql.Config{
 		User:                 conf.C.Db.User,
 		Passwd:               conf.C.Db.Pass,
@@ -21,12 +21,15 @@ func NewMysqlConn() *sql.DB {
 		AllowNativePasswords: conf.C.Db.AllowNativePasswords,
 	}
 
-	conn, err := sql.Open(conf.C.Db.Dbms, mysqlConf.FormatDSN())
+	db, err := gorm.Open(conf.C.Db.Dbms, mysqlConf.FormatDSN())
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err = conn.Ping(); err != nil {
+	if err = db.DB().Ping(); err != nil {
 		log.Fatal(err)
 	}
-	return conn
+	if conf.C.Sv.Debug {
+		db.LogMode(true)
+	}
+	return db
 }

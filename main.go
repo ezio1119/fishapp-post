@@ -7,13 +7,15 @@ import (
 
 	"github.com/ezio1119/fishapp-post/conf"
 	"github.com/ezio1119/fishapp-post/infrastructure"
-	"github.com/ezio1119/fishapp-post/middleware"
-	"github.com/ezio1119/fishapp-post/registry"
+	"github.com/ezio1119/fishapp-post/infrastructure/middleware"
+	"github.com/ezio1119/fishapp-post/interfaces/controllers"
+	"github.com/ezio1119/fishapp-post/interfaces/repo"
+	"github.com/ezio1119/fishapp-post/usecase/interactor"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
-	dbConn := infrastructure.NewMysqlConn()
+	dbConn := infrastructure.NewGormDB()
 	defer func() {
 		err := dbConn.Close()
 		if err != nil {
@@ -21,10 +23,14 @@ func main() {
 		}
 	}()
 	ctxTimeout := time.Duration(conf.C.Sv.Timeout) * time.Second
-	r := registry.NewRegistry(dbConn, ctxTimeout)
+	pController := controllers.NewPostController(
+		interactor.NewPostInteractor(
+			repo.NewPostRepo(dbConn),
+			ctxTimeout,
+		))
 	server := infrastructure.NewGrpcServer(
 		middleware.InitMiddleware(),
-		r.NewPostController(),
+		pController,
 	)
 	list, err := net.Listen("tcp", ":"+conf.C.Sv.Port)
 	if err != nil {

@@ -26,3 +26,16 @@ func (*middleware) LoggerInterceptor() grpc.UnaryServerInterceptor {
 	grpc_zap.ReplaceGrpcLogger(zapLogger)
 	return grpc_zap.UnaryServerInterceptor(zapLogger, opts...)
 }
+
+// func (*middleware) LoggerInterceptor() grpc.UnaryServerInterceptor {
+// 	var logrusLogger *logrus.Logger
+// 	logrusEntry := logrus.NewEntry(logrusLogger)
+// 	// Shared options for the logger, with a custom duration to log field function.
+// 	opts := []grpc_logrus.Option{
+// 		grpc_logrus.WithDurationField(func(duration time.Duration) (key string, value interface{}) {
+// 			return "grpc.time_ns", duration.Nanoseconds()
+// 		}),
+// 	}
+
+// 	return grpc_logrus.UnaryServerInterceptor(logrusEntry, opts...)
+// }

@@ -12,3 +12,4 @@ sv:
   timeout: 2
   port: 50051
   debug: true
+  defaultPageSize: 10

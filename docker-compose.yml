@@ -16,6 +16,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    # command: ["fresh"]
     volumes:
       - .:/app
     depends_on:

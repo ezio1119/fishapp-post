@@ -1,8 +1,8 @@
 package infrastructure
 
 import (
-	"github.com/ezio1119/fishapp-post/middleware"
-	"github.com/ezio1119/fishapp-post/post/controllers/post_grpc"
+	"github.com/ezio1119/fishapp-post/infrastructure/middleware"
+	"github.com/ezio1119/fishapp-post/interfaces/controllers/post_grpc"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

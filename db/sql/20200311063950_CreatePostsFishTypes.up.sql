@@ -1,11 +1,11 @@
-CREATE TABLE `apply_posts`(
+CREATE TABLE `posts_fish_types`(
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `post_id` INT(11) NOT NULL,
-  `user_id` INT(11) NOT NULL,
+  `fish_type_id` INT(11) NOT NULL,
   `created_at` DATETIME NOT NULL,
   `updated_at` DATETIME NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE (`post_id`, `user_id`),
+  UNIQUE (`post_id`, `fish_type_id`),
   FOREIGN KEY (`post_id`) 
     REFERENCES posts(`id`)
     ON DELETE CASCADE

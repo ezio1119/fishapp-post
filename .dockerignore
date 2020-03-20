@@ -5,3 +5,4 @@ tmp
 Dockerfile.dev
 *.md
 .github
+schema

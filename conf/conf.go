@@ -23,9 +23,10 @@ type config struct {
 		AllowNativePasswords bool
 	}
 	Sv struct {
-		Timeout int64
-		Port    string
-		Debug   bool
+		Timeout         int64
+		Port            string
+		Debug           bool
+		DefaultPageSize int64
 	}
 }
 
