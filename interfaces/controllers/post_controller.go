@@ -43,18 +43,18 @@ func (c *postController) ListPosts(ctx context.Context, in *post_grpc.ListPostsR
 	if err != nil {
 		return nil, err
 	}
+
 	return &post_grpc.ListPostsRes{Posts: listProto, NextPageToken: nextToken}, nil
 }
 
 func (c *postController) CreatePost(ctx context.Context, in *post_grpc.CreatePostReq) (*post_grpc.Post, error) {
-
 	t, err := ptypes.Timestamp(in.MeetingAt)
 	if err != nil {
 		return nil, err
 	}
-	pfishTypes := make([]models.PostsFishType, len(in.FishTypeIds))
+	pfishTypes := make([]*models.PostsFishType, len(in.FishTypeIds))
 	for i, f := range in.FishTypeIds {
-		pfishTypes[i] = models.PostsFishType{FishTypeID: f}
+		pfishTypes[i] = &models.PostsFishType{FishTypeID: f}
 	}
 	p := &models.Post{
 		Title:             in.Title,
@@ -78,9 +78,9 @@ func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePos
 	if err != nil {
 		return nil, err
 	}
-	pfishTypes := make([]models.PostsFishType, len(in.FishTypeIds))
+	pfishTypes := make([]*models.PostsFishType, len(in.FishTypeIds))
 	for i, f := range in.FishTypeIds {
-		pfishTypes[i] = models.PostsFishType{FishTypeID: f}
+		pfishTypes[i] = &models.PostsFishType{FishTypeID: f}
 	}
 	p := &models.Post{
 		ID:                in.Id,

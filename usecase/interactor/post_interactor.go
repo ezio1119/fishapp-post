@@ -55,6 +55,7 @@ func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize
 	if err != nil {
 		return nil, "", err
 	}
+
 	if len(list) == int(pageSize) {
 		list = list[:pageSize-1]
 		pageToken = genPageTokenFromID(list[len(list)-1].ID)
@@ -67,7 +68,8 @@ func (i *postInteractor) GetPost(ctx context.Context, id int64) (*models.Post, e
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
-	return i.postRepo.GetPostWithPostsFishType(ctx, id)
+	return i.postRepo.GetPostWithChildlen(ctx, id)
+
 }
 
 func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) error {
@@ -84,27 +86,25 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
-	res, err := i.postRepo.GetPostWithPostsFishType(ctx, p.ID)
+	res, err := i.postRepo.GetPostWithChildlen(ctx, p.ID)
 	if err != nil {
 		return err
 	}
 	if res.UserID != p.UserID {
 		return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to update post_id=%d", p.UserID, res.ID)
 	}
-	listA, err := i.postRepo.ListApplyPosts(ctx, &models.ApplyPost{PostID: p.ID})
-	if err != nil {
-		return err
-	}
-	if len(listA) > int(p.MaxApply) {
+	if len(res.ApplyPosts) > int(p.MaxApply) {
 		return status.Error(codes.InvalidArgument, "there are more apply than max_apply")
 	}
 	postsFishTypeIDs := make([]int64, len(res.PostsFishTypes))
 	for i, f := range res.PostsFishTypes {
 		postsFishTypeIDs[i] = f.ID
 	}
+	// postに紐づいているPostsFishTypeをすべて消す
 	if err := i.postRepo.BatchDeletePostsFishType(ctx, postsFishTypeIDs); err != nil {
 		return err
 	}
+	// それから新しいPostsFishTypeをinsertする。batch insertはされない。
 	if err := i.postRepo.UpdatePost(ctx, p); err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (i *postInteractor) DeletePost(ctx context.Context, id int64, uID int64) er
 		return err
 	}
 	if res.UserID != uID {
-		return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to Delete post_id=%d", uID, id)
+		return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to delete post_id=%d", uID, id)
 	}
 
 	if err := i.postRepo.DeletePost(ctx, id); err != nil {
@@ -134,6 +134,7 @@ func (i *postInteractor) DeletePost(ctx context.Context, id int64, uID int64) er
 func (i *postInteractor) ListApplyPosts(ctx context.Context, a *models.ApplyPost) ([]*models.ApplyPost, error) {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
+	// バリデーションここでいいのかな proto-gen-validateでできなかった
 	if a.UserID == 0 && a.PostID == 0 {
 		return nil, status.Error(codes.InvalidArgument, "enter a value for either user_id or post_id")
 	}

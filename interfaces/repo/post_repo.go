@@ -34,9 +34,9 @@ func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
 	return nil
 }
 
-func (r *postRepo) GetPostWithPostsFishType(ctx context.Context, id int64) (*models.Post, error) {
+func (r *postRepo) GetPostWithChildlen(ctx context.Context, id int64) (*models.Post, error) {
 	p := &models.Post{}
-	if err := r.db.Take(p, id).Related(&p.PostsFishTypes).Error; err != nil {
+	if err := r.db.Take(p, id).Related(&p.PostsFishTypes).Related(&p.ApplyPosts).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
 			err = status.Errorf(codes.NotFound, "post with id='%d' is not found", id)
 		}
@@ -117,7 +117,7 @@ func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cur
 		tx = tx.Order(fmt.Sprintf("%s %s", f.SortBy, f.OrderBy))
 	}
 
-	if err := tx.Find(&list).Error; err != nil {
+	if err := tx.Preload("ApplyPosts").Preload("PostsFishTypes").Find(&list).Error; err != nil {
 		return nil, err
 	}
 	return list, nil
@@ -177,6 +177,15 @@ func (r *postRepo) ListApplyPostsByUserID(ctx context.Context, uID int64) ([]*mo
 func (r *postRepo) ListApplyPosts(ctx context.Context, a *models.ApplyPost) ([]*models.ApplyPost, error) {
 	applyPosts := []*models.ApplyPost{}
 	if err := r.db.Where(a).Find(&applyPosts).Error; err != nil {
+		return nil, err
+	}
+
+	return applyPosts, nil
+}
+
+func (r *postRepo) BatchGetApplyPostsByPostIDs(ctx context.Context, postIDs []int64) ([]*models.ApplyPost, error) {
+	applyPosts := []*models.ApplyPost{}
+	if err := r.db.Where("post_id IN (?)", postIDs).Order("created_at DESC").Find(&applyPosts).Error; err != nil {
 		return nil, err
 	}
 	return applyPosts, nil

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/interfaces/controllers/post_grpc"
@@ -26,6 +27,10 @@ func convPostProto(p *models.Post) (*post_grpc.Post, error) {
 	for i, t := range p.PostsFishTypes {
 		fishTypeIds[i] = t.FishTypeID
 	}
+	aProto, err := convListApplyPostsProto(p.ApplyPosts)
+	if err != nil {
+		return nil, err
+	}
 	return &post_grpc.Post{
 		Id:                p.ID,
 		Title:             p.Title,
@@ -36,6 +41,7 @@ func convPostProto(p *models.Post) (*post_grpc.Post, error) {
 		MeetingPlaceId:    p.MeetingPlaceID,
 		MeetingAt:         mAt,
 		MaxApply:          p.MaxApply,
+		ApplyPosts:        aProto,
 		UserId:            p.UserID,
 		CreatedAt:         cAt,
 		UpdatedAt:         uAt,
@@ -73,6 +79,7 @@ func convApplyPostProto(a *models.ApplyPost) (*post_grpc.ApplyPost, error) {
 }
 
 func convListApplyPostsProto(list []*models.ApplyPost) ([]*post_grpc.ApplyPost, error) {
+	fmt.Printf("%#v\n", list)
 	listA := make([]*post_grpc.ApplyPost, len(list))
 	for i, a := range list {
 		aP, err := convApplyPostProto(a)
