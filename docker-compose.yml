@@ -13,12 +13,12 @@ services:
       - "7306:3306"
 
   post:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    build: .
+      # context: .
+      # dockerfile: Dockerfile.dev
     # command: ["fresh"]
-    volumes:
-      - .:/app
+    # volumes:
+    #   - .:/app
     depends_on:
       - post-db
     tty: true
