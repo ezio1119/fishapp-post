@@ -13,7 +13,7 @@ import (
 )
 
 type PostInteractor interface {
-	GetPost(ctx context.Context, id int64) (*models.Post, error)
+	GetPost(ctx context.Context, id int64, withChildren bool) (*models.Post, error)
 	ListPosts(ctx context.Context, p *models.Post, pageSize int64, pageToken string, filter *models.PostFilter) ([]*models.Post, string, error)
 	CreatePost(ctx context.Context, p *models.Post) error
 	UpdatePost(ctx context.Context, p *models.Post) error
@@ -64,12 +64,13 @@ func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize
 	return list, pageToken, nil
 }
 
-func (i *postInteractor) GetPost(ctx context.Context, id int64) (*models.Post, error) {
+func (i *postInteractor) GetPost(ctx context.Context, id int64, with bool) (*models.Post, error) {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-
-	return i.postRepo.GetPostWithChildlen(ctx, id)
-
+	if with {
+		return i.postRepo.GetPostWithChildlen(ctx, id)
+	}
+	return i.postRepo.GetPost(ctx, id)
 }
 
 func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) error {
@@ -90,9 +91,9 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post) error {
 	if err != nil {
 		return err
 	}
-	if res.UserID != p.UserID {
-		return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to update post_id=%d", p.UserID, res.ID)
-	}
+	// if res.UserID != p.UserID {
+	// 	return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to update post_id=%d", p.UserID, res.ID)
+	// }
 	if len(res.ApplyPosts) > int(p.MaxApply) {
 		return status.Error(codes.InvalidArgument, "there are more apply than max_apply")
 	}
