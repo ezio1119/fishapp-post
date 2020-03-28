@@ -56,6 +56,17 @@ func (r *postRepo) GetPost(ctx context.Context, id int64) (*models.Post, error) 
 	return p, nil
 }
 
+func (r *postRepo) GetPostCanApply(ctx context.Context, id int64) (*models.Post, error) {
+	p := &models.Post{}
+	if err := r.db.Where("id = ? AND max_apply > ?", id, r.db.Table("apply_posts").Select("COUNT(*)").Where("post_id = ?", id).QueryExpr()).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			err = status.Errorf(codes.InvalidArgument, "cannot apply post_id ='%d' because upper limit", id)
+		}
+		return nil, err
+	}
+	return p, nil
+}
+
 func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cursor int64, f *models.PostFilter) ([]*models.Post, error) {
 	list := []*models.Post{}
 	tx := r.db.Table("posts").
@@ -132,25 +143,19 @@ func (r *postRepo) UpdatePost(ctx context.Context, p *models.Post) error {
 	return nil
 }
 
-func (r *postRepo) BatchDeletePostsFishType(ctx context.Context, ids []int64) error {
-	if err := r.db.Where(ids).Delete(&models.PostsFishType{}).Error; err != nil {
-		return err
-	}
-	return nil
+func (r *postRepo) DeletePostsFishTypesByPostID(ctx context.Context, pID int64) error {
+	return r.db.Where("post_id = ?", pID).Delete(&models.PostsFishType{}).Error
 }
 
 func (r *postRepo) DeletePost(ctx context.Context, id int64) error {
-	if err := r.db.Delete(&models.Post{ID: id}).Error; err != nil {
-		return err
-	}
-	return nil
+	return r.db.Delete(&models.Post{ID: id}).Error
 }
 
-func (r *postRepo) GetApplyPost(ctx context.Context, id int64) (*models.ApplyPost, error) {
+func (r *postRepo) GetApplyPost(ctx context.Context, pID int64, uID int64) (*models.ApplyPost, error) {
 	a := &models.ApplyPost{}
-	if err := r.db.Take(a, id).Error; err != nil {
+	if err := r.db.Where("user_id = ? AND post_id = ?", uID, pID).Take(a).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
-			err = status.Errorf(codes.NotFound, "apply_post with id='%d' is not found", id)
+			err = status.Errorf(codes.NotFound, "apply_post with post_id='%d' user_id='%d' is not found", pID, uID)
 		}
 		return nil, err
 	}
@@ -203,9 +208,6 @@ func (r *postRepo) CreateApplyPost(ctx context.Context, a *models.ApplyPost) err
 	return nil
 }
 
-func (r *postRepo) DeleteApplyPost(ctx context.Context, id int64) error {
-	if err := r.db.Delete(&models.ApplyPost{ID: id}).Error; err != nil {
-		return err
-	}
-	return nil
+func (r *postRepo) DeleteApplyPost(ctx context.Context, pID int64, uID int64) error {
+	return r.db.Where("user_id = ? AND post_id = ?", uID, pID).Delete(&models.ApplyPost{}).Error
 }

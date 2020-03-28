@@ -19,7 +19,7 @@ func NewPostController(pu interactor.PostInteractor) *postController {
 }
 
 func (c *postController) GetPost(ctx context.Context, in *post_grpc.GetPostReq) (*post_grpc.Post, error) {
-	p, err := c.postInteractor.GetPost(ctx, in.Id, in.WithChildren)
+	p, err := c.postInteractor.GetPost(ctx, in.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -92,19 +92,27 @@ func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePos
 		MeetingPlaceID:    in.MeetingPlaceId,
 		MeetingAt:         t,
 		MaxApply:          in.MaxApply,
-		UserID:            in.UserId,
 	}
-	if err := c.postInteractor.UpdatePost(ctx, p); err != nil {
+	post, err := c.postInteractor.UpdatePost(ctx, p)
+	if err != nil {
 		return nil, err
 	}
-	return convPostProto(p)
+	return convPostProto(post)
 }
 
 func (c *postController) DeletePost(ctx context.Context, in *post_grpc.DeletePostReq) (*empty.Empty, error) {
-	if err := c.postInteractor.DeletePost(ctx, in.Id, in.UserId); err != nil {
+	if err := c.postInteractor.DeletePost(ctx, in.Id); err != nil {
 		return nil, err
 	}
 	return &empty.Empty{}, nil
+}
+
+func (c *postController) GetApplyPost(ctx context.Context, in *post_grpc.GetApplyPostReq) (*post_grpc.ApplyPost, error) {
+	a, err := c.postInteractor.GetApplyPost(ctx, in.PostId, in.UserId)
+	if err != nil {
+		return nil, err
+	}
+	return convApplyPostProto(a)
 }
 
 func (c *postController) ListApplyPosts(ctx context.Context, in *post_grpc.ListApplyPostsReq) (*post_grpc.ListApplyPostsRes, error) {
@@ -123,19 +131,19 @@ func (c *postController) ListApplyPosts(ctx context.Context, in *post_grpc.ListA
 }
 
 func (c *postController) CreateApplyPost(ctx context.Context, in *post_grpc.CreateApplyPostReq) (*post_grpc.ApplyPost, error) {
-	ap := &models.ApplyPost{
+	a := &models.ApplyPost{
 		PostID: in.PostId,
 		UserID: in.UserId,
 	}
-	err := c.postInteractor.CreateApplyPost(ctx, ap)
+	err := c.postInteractor.CreateApplyPost(ctx, a)
 	if err != nil {
 		return nil, err
 	}
-	return convApplyPostProto(ap)
+	return convApplyPostProto(a)
 }
 
 func (c *postController) DeleteApplyPost(ctx context.Context, in *post_grpc.DeleteApplyPostReq) (*empty.Empty, error) {
-	if err := c.postInteractor.DeleteApplyPost(ctx, in.Id, in.UserId); err != nil {
+	if err := c.postInteractor.DeleteApplyPost(ctx, in.PostId, in.UserId); err != nil {
 		return nil, err
 	}
 	return &empty.Empty{}, nil

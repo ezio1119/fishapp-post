@@ -14,9 +14,8 @@ services:
 
   post:
     build: .
-      # context: .
-      # dockerfile: Dockerfile.dev
-    # command: ["fresh"]
+    #   context: .
+    #   dockerfile: Dockerfile.dev
     # volumes:
     #   - .:/app
     depends_on:

@@ -26,6 +26,8 @@ func main() {
 	pController := controllers.NewPostController(
 		interactor.NewPostInteractor(
 			repo.NewPostRepo(dbConn),
+			repo.NewPostsFishTypeRepo(dbConn),
+			repo.NewApplyPostRepo(dbConn),
 			ctxTimeout,
 		))
 	server := infrastructure.NewGrpcServer(

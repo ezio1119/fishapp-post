@@ -69,21 +69,6 @@ func (m *Post) Validate() error {
 
 	// no validation rules for MaxApply
 
-	for idx, item := range m.GetApplyPosts() {
-		_, _ = idx, item
-
-		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return PostValidationError{
-					field:  fmt.Sprintf("ApplyPosts[%v]", idx),
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
-			}
-		}
-
-	}
-
 	if v, ok := interface{}(m.GetCreatedAt()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return PostValidationError{
@@ -264,8 +249,6 @@ func (m *GetPostReq) Validate() error {
 			reason: "value must be greater than or equal to 1",
 		}
 	}
-
-	// no validation rules for WithChildren
 
 	return nil
 }
@@ -744,13 +727,6 @@ func (m *UpdatePostReq) Validate() error {
 		}
 	}
 
-	if m.GetUserId() < 1 {
-		return UpdatePostReqValidationError{
-			field:  "UserId",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
-
 	return nil
 }
 
@@ -819,13 +795,6 @@ func (m *DeletePostReq) Validate() error {
 	if m.GetId() < 1 {
 		return DeletePostReqValidationError{
 			field:  "Id",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
-
-	if m.GetUserId() < 1 {
-		return DeletePostReqValidationError{
-			field:  "UserId",
 			reason: "value must be greater than or equal to 1",
 		}
 	}
@@ -953,6 +922,85 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = DeletePostResValidationError{}
+
+// Validate checks the field values on GetApplyPostReq with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *GetApplyPostReq) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if m.GetPostId() < 1 {
+		return GetApplyPostReqValidationError{
+			field:  "PostId",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
+	if m.GetUserId() < 1 {
+		return GetApplyPostReqValidationError{
+			field:  "UserId",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
+	return nil
+}
+
+// GetApplyPostReqValidationError is the validation error returned by
+// GetApplyPostReq.Validate if the designated constraints aren't met.
+type GetApplyPostReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetApplyPostReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetApplyPostReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetApplyPostReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetApplyPostReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetApplyPostReqValidationError) ErrorName() string { return "GetApplyPostReqValidationError" }
+
+// Error satisfies the builtin error interface
+func (e GetApplyPostReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetApplyPostReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetApplyPostReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetApplyPostReqValidationError{}
 
 // Validate checks the field values on ListApplyPostsReq with the rules defined
 // in the proto definition for this message. If any rules are violated, an
@@ -1202,9 +1250,9 @@ func (m *DeleteApplyPostReq) Validate() error {
 		return nil
 	}
 
-	if m.GetId() < 1 {
+	if m.GetPostId() < 1 {
 		return DeleteApplyPostReqValidationError{
-			field:  "Id",
+			field:  "PostId",
 			reason: "value must be greater than or equal to 1",
 		}
 	}

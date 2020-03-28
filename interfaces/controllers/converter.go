@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/interfaces/controllers/post_grpc"
@@ -79,7 +78,6 @@ func convApplyPostProto(a *models.ApplyPost) (*post_grpc.ApplyPost, error) {
 }
 
 func convListApplyPostsProto(list []*models.ApplyPost) ([]*post_grpc.ApplyPost, error) {
-	fmt.Printf("%#v\n", list)
 	listA := make([]*post_grpc.ApplyPost, len(list))
 	for i, a := range list {
 		aP, err := convApplyPostProto(a)
