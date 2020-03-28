@@ -265,6 +265,8 @@ func (m *GetPostReq) Validate() error {
 		}
 	}
 
+	// no validation rules for WithChildren
+
 	return nil
 }
 

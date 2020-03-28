@@ -42,7 +42,6 @@ func (r *postRepo) GetPostWithChildlen(ctx context.Context, id int64) (*models.P
 		}
 		return nil, err
 	}
-	fmt.Printf("%#v", *p)
 	return p, nil
 }
 

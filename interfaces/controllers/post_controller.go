@@ -19,7 +19,7 @@ func NewPostController(pu interactor.PostInteractor) *postController {
 }
 
 func (c *postController) GetPost(ctx context.Context, in *post_grpc.GetPostReq) (*post_grpc.Post, error) {
-	p, err := c.postInteractor.GetPost(ctx, in.Id)
+	p, err := c.postInteractor.GetPost(ctx, in.Id, in.WithChildren)
 	if err != nil {
 		return nil, err
 	}
