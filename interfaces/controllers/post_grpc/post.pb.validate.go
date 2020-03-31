@@ -509,6 +509,13 @@ func (m *CreatePostReq) Validate() error {
 		}
 	}
 
+	if len(m.GetFishTypeIds()) < 1 {
+		return CreatePostReqValidationError{
+			field:  "FishTypeIds",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
 	_CreatePostReq_FishTypeIds_Unique := make(map[int64]struct{}, len(m.GetFishTypeIds()))
 
 	for idx, item := range m.GetFishTypeIds() {
@@ -523,7 +530,13 @@ func (m *CreatePostReq) Validate() error {
 			_CreatePostReq_FishTypeIds_Unique[item] = struct{}{}
 		}
 
-		// no validation rules for FishTypeIds[idx]
+		if val := item; val < 1 || val > 95 {
+			return CreatePostReqValidationError{
+				field:  fmt.Sprintf("FishTypeIds[%v]", idx),
+				reason: "value must be inside range [1, 95]",
+			}
+		}
+
 	}
 
 	if val := m.GetPrefectureId(); val < 1 || val > 47 {
@@ -668,6 +681,13 @@ func (m *UpdatePostReq) Validate() error {
 		}
 	}
 
+	if len(m.GetFishTypeIds()) < 1 {
+		return UpdatePostReqValidationError{
+			field:  "FishTypeIds",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
 	_UpdatePostReq_FishTypeIds_Unique := make(map[int64]struct{}, len(m.GetFishTypeIds()))
 
 	for idx, item := range m.GetFishTypeIds() {
@@ -682,7 +702,13 @@ func (m *UpdatePostReq) Validate() error {
 			_UpdatePostReq_FishTypeIds_Unique[item] = struct{}{}
 		}
 
-		// no validation rules for FishTypeIds[idx]
+		if val := item; val < 1 || val > 95 {
+			return UpdatePostReqValidationError{
+				field:  fmt.Sprintf("FishTypeIds[%v]", idx),
+				reason: "value must be inside range [1, 95]",
+			}
+		}
+
 	}
 
 	if val := m.GetPrefectureId(); val < 1 || val > 47 {

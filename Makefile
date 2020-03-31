@@ -56,3 +56,6 @@ exec:
 
 logs:
 	docker logs -f --tail 100 post_post_1
+
+dblog:
+	docker logs -f --tail 100 post_post-db_1

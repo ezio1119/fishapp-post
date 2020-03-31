@@ -22,25 +22,16 @@ func convPostProto(p *models.Post) (*post_grpc.Post, error) {
 	if err != nil {
 		return nil, err
 	}
-	fishTypeIds := make([]int64, len(p.PostsFishTypes))
-	for i, t := range p.PostsFishTypes {
-		fishTypeIds[i] = t.FishTypeID
-	}
-	aProto, err := convListApplyPostsProto(p.ApplyPosts)
-	if err != nil {
-		return nil, err
-	}
 	return &post_grpc.Post{
 		Id:                p.ID,
 		Title:             p.Title,
 		Content:           p.Content,
 		FishingSpotTypeId: p.FishingSpotTypeID,
-		FishTypeIds:       fishTypeIds,
+		FishTypeIds:       p.FishTypeIDs,
 		PrefectureId:      p.PrefectureID,
 		MeetingPlaceId:    p.MeetingPlaceID,
 		MeetingAt:         mAt,
 		MaxApply:          p.MaxApply,
-		ApplyPosts:        aProto,
 		UserId:            p.UserID,
 		CreatedAt:         cAt,
 		UpdatedAt:         uAt,

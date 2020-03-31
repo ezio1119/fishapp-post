@@ -12,4 +12,5 @@ type ApplyPostRepo interface {
 	ListApplyPosts(ctx context.Context, applyPost *models.ApplyPost) ([]*models.ApplyPost, error)
 	CreateApplyPost(ctx context.Context, p *models.ApplyPost) error
 	DeleteApplyPost(ctx context.Context, pID int64, uID int64) error
+	CountByPostID(ctx context.Context, postID int64) (int64, error)
 }

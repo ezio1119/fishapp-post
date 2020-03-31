@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	dbConn := infrastructure.NewGormDB()
+	dbConn := infrastructure.NewMySQLDB()
 	defer func() {
 		err := dbConn.Close()
 		if err != nil {

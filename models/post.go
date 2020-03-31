@@ -9,12 +9,11 @@ type Post struct {
 	Title             string
 	Content           string
 	FishingSpotTypeID int64
-	PostsFishTypes    []*PostsFishType
+	FishTypeIDs       []int64
 	PrefectureID      int64
 	MeetingPlaceID    string
 	MeetingAt         time.Time
 	MaxApply          int64
-	ApplyPosts        []*ApplyPost
 	UserID            int64
 	UpdatedAt         time.Time
 	CreatedAt         time.Time

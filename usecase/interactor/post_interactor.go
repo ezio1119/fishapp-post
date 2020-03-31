@@ -41,18 +41,44 @@ func NewPostInteractor(
 	return &postInteractor{pr, pfr, ar, timeout}
 }
 
+func (i *postInteractor) fillPostWithFishTypeIDs(ctx context.Context, p *models.Post) error {
+	ids, err := i.postRepo.ListFishTypeIDsByPostID(ctx, p.ID)
+	if err != nil {
+		return err
+	}
+	p.FishTypeIDs = ids
+	return nil
+}
+
+func (i *postInteractor) fillListPostsWithFishTypeIDs(ctx context.Context, posts []*models.Post) error {
+	pIDs := make([]int64, len(posts))
+	for i, p := range posts {
+		pIDs[i] = p.ID
+	}
+	fishes, err := i.postRepo.BatchListPostsFishTypesByPostIDs(ctx, pIDs)
+	if err != nil {
+		return err
+	}
+	for _, p := range posts {
+		for _, f := range fishes {
+			if p.ID == f.PostID {
+				p.FishTypeIDs = append(p.FishTypeIDs, f.FishTypeID)
+			}
+		}
+	}
+	return nil
+}
+
 func (i *postInteractor) GetPost(ctx context.Context, id int64) (*models.Post, error) {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-	p, err := i.postRepo.GetPost(ctx, id)
+	p, err := i.postRepo.GetPostByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	f, err := i.postsFishTypeRepo.ListPostsFishTypesByPostID(id)
-	if err != nil {
+	if err := i.fillPostWithFishTypeIDs(ctx, p); err != nil {
 		return nil, err
 	}
-	p.PostsFishTypes = f
 	return p, nil
 }
 
@@ -74,25 +100,31 @@ func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize
 		}
 	}
 
-	list, err := i.postRepo.ListPosts(ctx, p, pageSize, cursor, f)
+	list, err := i.postRepo.List(ctx, p, pageSize, cursor, f)
 	if err != nil {
 		return nil, "", err
 	}
-
+	nextToken := ""
 	if len(list) == int(pageSize) {
 		list = list[:pageSize-1]
-		pageToken = genPageTokenFromID(list[len(list)-1].ID)
+		nextToken = genPageTokenFromID(list[len(list)-1].ID)
 	}
-	if list, err = i.applyPostRepo.FillPostWithApplyPost(); err != nil {
-		return nil, nil, err
+
+	if len(list) != 0 {
+		if err = i.fillListPostsWithFishTypeIDs(ctx, list); err != nil {
+			return nil, "", err
+		}
 	}
-	return list, pageToken, nil
+	return list, nextToken, nil
 }
 
 func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
+	now := time.Now()
+	p.CreatedAt = now
+	p.UpdatedAt = now
 	if err := i.postRepo.CreatePost(ctx, p); err != nil {
 		return err
 	}
@@ -103,29 +135,41 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post) (*model
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
-	res, err := i.postRepo.GetPost(ctx, p.ID)
+	// res, err := i.postRepo.GetByID(ctx, p.ID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// postに紐づいているapply_postをカウント
+	cnt, err := i.applyPostRepo.CountByPostID(ctx, p.ID)
 	if err != nil {
 		return nil, err
 	}
-	if res.MaxApply > p.MaxApply {
-		return nil, status.Error(codes.InvalidArgument, "there are more apply than max_apply")
+	fmt.Println("キトや！！", cnt)
+
+	if cnt > p.MaxApply {
+		return nil, status.Errorf(codes.InvalidArgument, "got max_apply is %d but already have %d apply", p.MaxApply, cnt)
 	}
+	panic("ccas")
 	// postに紐づいているPostsFishTypeをすべて消す
-	if err := i.postRepo.DeletePostsFishTypesByPostID(ctx, p.ID); err != nil {
-		return nil, err
-	}
+
+	now := time.Now()
+	p.UpdatedAt = now
 	// それから新しいPostsFishTypeをアソシエーションでinsertする。batch insertはされない。
 	if err := i.postRepo.UpdatePost(ctx, p); err != nil {
 		return nil, err
 	}
+	if err := i.postsFishTypeRepo.DeleteByPostID(ctx, p.ID); err != nil {
+		return nil, err
+	}
+	panic("ccas")
 	// apply_post,
-	return i.postRepo.GetPostWithChildlen(ctx, p.ID)
+	// return i.postRepo.GetPostWithChildlen(ctx, p.ID)
 }
 
 func (i *postInteractor) DeletePost(ctx context.Context, id int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-	if err := i.postRepo.DeletePost(ctx, id); err != nil {
+	if err := i.postRepo.Delete(ctx, id); err != nil {
 		return err
 	}
 	return nil
