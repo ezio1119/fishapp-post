@@ -10,7 +10,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
-	"github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -78,14 +77,7 @@ func (r *postRepo) fetchPostsFishTypes(ctx context.Context, query string, args .
 	result := make([]*models.PostsFishType, 0)
 	for rows.Next() {
 		f := new(models.PostsFishType)
-		err = rows.Scan(
-			&f.ID,
-			&f.PostID,
-			&f.FishTypeID,
-			&f.CreatedAt,
-			&f.UpdatedAt,
-		)
-		if err != nil {
+		if err := rows.Scan(&f.PostID, &f.FishTypeID); err != nil {
 			return nil, err
 		}
 		result = append(result, f)
@@ -94,29 +86,117 @@ func (r *postRepo) fetchPostsFishTypes(ctx context.Context, query string, args .
 	return result, nil
 }
 
-func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
-	query := `INSERT INTO posts(title, content, fishing_spot_type_id, prefecture_id, meeting_place_id, meeting_at, max_apply, user_id, updated_at, created_at)
-						VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	stmt, err := r.db.PrepareContext(ctx, query)
+func (r *postRepo) fillPostWithFishTypeIDs(ctx context.Context, p *models.Post) error {
+	query := `SELECT fish_type_id
+						FROM posts_fish_types
+						WHERE post_id = ?`
+	rows, err := r.db.QueryContext(ctx, query, p.ID)
 	if err != nil {
 		return err
 	}
-	res, err := stmt.ExecContext(ctx, p.Title, p.Content, p.FishingSpotTypeID, p.PrefectureID, p.MeetingPlaceID, p.MeetingAt, p.MaxApply, p.UserID, p.UpdatedAt, p.CreatedAt)
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
+	ids := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		ids = append(ids, id)
+	}
+	p.FishTypeIDs = ids
+	return nil
+}
+
+func (r *postRepo) fillListPostsWithFishTypeIDs(ctx context.Context, posts []*models.Post) error {
+	query := `SELECT post_id, fish_type_id
+						FROM posts_fish_types
+						WHERE post_id IN(?` + strings.Repeat(",?", len(posts)-1) + ")"
+
+	args := make([]interface{}, len(posts))
+	for i, p := range posts {
+		args[i] = p.ID
+	}
+	fishes, err := r.fetchPostsFishTypes(ctx, query, args...)
 	if err != nil {
-		e, ok := err.(*mysql.MySQLError)
-		if ok {
-			if e.Number == 1062 {
-				err = status.Error(codes.AlreadyExists, err.Error())
+		return err
+	}
+	for _, p := range posts {
+		for _, f := range fishes {
+			if p.ID == f.PostID {
+				p.FishTypeIDs = append(p.FishTypeIDs, f.FishTypeID)
 			}
 		}
+	}
+	return nil
+}
+
+func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
+	query := `INSERT posts SET title=?, content=?, fishing_spot_type_id=?, prefecture_id=?, meeting_place_id=?, meeting_at=?, max_apply=?, user_id=?, updated_at=?, created_at=?`
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
 		return err
+	}
+	defer tx.Rollback()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	res, err := tx.ExecContext(ctx, query, p.Title, p.Content, p.FishingSpotTypeID, p.PrefectureID, p.MeetingPlaceID, p.MeetingAt, p.MaxApply, p.UserID, p.UpdatedAt, p.CreatedAt)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	rowCnt, err := res.RowsAffected()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if int(rowCnt) != 1 {
+		tx.Rollback()
+		return fmt.Errorf("expected %d row affected, got %d rows affected", 1, rowCnt)
 	}
 	lastID, err := res.LastInsertId()
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	p.ID = lastID
-	return nil
+
+	// postsFishTypesをbatch insert
+	query = `INSERT INTO posts_fish_types(post_id, fish_type_id, created_at, updated_at)
+					 VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.FishTypeIDs)-1)
+
+	args := make([]interface{}, len(p.FishTypeIDs)*4)
+	for i, fID := range p.FishTypeIDs {
+		args[i*4] = p.ID
+		args[i*4+1] = fID
+		args[i*4+2] = p.CreatedAt
+		args[i*4+3] = p.UpdatedAt
+	}
+
+	res, err = tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	rowCnt, err = res.RowsAffected()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if int(rowCnt) != len(p.FishTypeIDs) {
+		tx.Rollback()
+		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.FishTypeIDs), rowCnt)
+	}
+
+	return tx.Commit()
 }
 
 func (r *postRepo) GetPostByID(ctx context.Context, id int64) (*models.Post, error) {
@@ -131,22 +211,13 @@ func (r *postRepo) GetPostByID(ctx context.Context, id int64) (*models.Post, err
 	if len(list) == 0 {
 		return nil, status.Errorf(codes.NotFound, "post with id='%d' is not found", id)
 	}
+	if err := r.fillPostWithFishTypeIDs(ctx, list[0]); err != nil {
+		return nil, err
+	}
 	return list[0], nil
 }
 
-func (r *postRepo) GetPostCanApply(ctx context.Context, id int64) (*models.Post, error) {
-	// p := &models.Post{}
-	// if err := r.db.Where("id = ? AND max_apply > ?", id, r.db.Table("apply_posts").Select("COUNT(*)").Where("post_id = ?", id).QueryExpr()).Error; err != nil {
-	// 	if gorm.IsRecordNotFoundError(err) {
-	// 		err = status.Errorf(codes.InvalidArgument, "cannot apply post_id ='%d' because upper limit", id)
-	// 	}
-	// 	return nil, err
-	// }
-	// return p, nil
-	panic("not implemented")
-}
-
-func (r *postRepo) List(ctx context.Context, p *models.Post, num int64, cursor int64, f *models.PostFilter) ([]*models.Post, error) {
+func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cursor int64, f *models.PostFilter) ([]*models.Post, error) {
 	sq := sq.Select("id, title, content, fishing_spot_type_id, prefecture_id, meeting_place_id, meeting_at, max_apply, user_id, updated_at, created_at").
 		From("posts").
 		GroupBy("posts.id").
@@ -210,162 +281,105 @@ func (r *postRepo) List(ctx context.Context, p *models.Post, num int64, cursor i
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(query)
-	return r.fetchPosts(ctx, query, args...)
+	posts, err := r.fetchPosts(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.fillListPostsWithFishTypeIDs(ctx, posts); err != nil {
+		return nil, err
+	}
+	return posts, nil
 }
 
 func (r *postRepo) UpdatePost(ctx context.Context, p *models.Post) error {
 	query := `UPDATE posts SET title=?, content=?, fishing_spot_type_id=?, prefecture_id=?, meeting_place_id=?, meeting_at=?, max_apply=?, updated_at=?
 						WHERE id = ?`
-	stmt, err := r.db.PrepareContext(ctx, query)
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return nil
 	}
-	res, err := stmt.ExecContext(ctx, p.Title, p.Content, p.FishingSpotTypeID, p.PrefectureID, p.MeetingPlaceID, p.MeetingAt, p.MaxApply, p.UpdatedAt)
+	res, err := tx.ExecContext(ctx, query, p.Title, p.Content, p.FishingSpotTypeID, p.PrefectureID, p.MeetingPlaceID, p.MeetingAt, p.MaxApply, p.UpdatedAt, p.ID)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	if rowCnt != 1 {
+		tx.Rollback()
 		return fmt.Errorf("expected %d row affected, got %d rows affected", 1, rowCnt)
 	}
-	return nil
+
+	query = "DELETE FROM posts_fish_types WHERE post_id = ?"
+	res, err = tx.ExecContext(ctx, query, p.ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if _, err = res.RowsAffected(); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	query = `INSERT INTO posts_fish_types(post_id, fish_type_id, created_at, updated_at)
+					 VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.FishTypeIDs)-1)
+
+	args := make([]interface{}, len(p.FishTypeIDs)*4)
+	for i, fID := range p.FishTypeIDs {
+		args[i*4] = p.ID
+		args[i*4+1] = fID
+		args[i*4+2] = p.UpdatedAt
+		args[i*4+3] = p.UpdatedAt
+	}
+
+	res, err = tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	rowCnt, err = res.RowsAffected()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if int(rowCnt) != len(p.FishTypeIDs) {
+		tx.Rollback()
+		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.FishTypeIDs), rowCnt)
+	}
+
+	return tx.Commit()
 }
 
-func (r *postRepo) DeletePostsFishTypesByPostID(ctx context.Context, pID int64) error {
-	// return r.db.Where("post_id = ?", pID).Delete(&models.PostsFishType{}).Error
-	panic("not implemented")
-}
-
-func (r *postRepo) Delete(ctx context.Context, id int64) error {
+func (r *postRepo) DeletePost(ctx context.Context, id int64) error {
 	query := "DELETE FROM posts WHERE id = ?"
-	stmt, err := r.db.PrepareContext(ctx, query)
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
-	res, err := stmt.ExecContext(ctx, id)
-	if err != nil {
 
+	res, err := tx.ExecContext(ctx, query, id)
+	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
-
 	if rowCnt != 1 {
-		err = fmt.Errorf("expected %d row affected, got %d rows affected", 1, rowCnt)
+		tx.Rollback()
+		return fmt.Errorf("expected %d row affected, got %d rows affected", 1, rowCnt)
+	}
+
+	query = "DELETE FROM posts_fish_types WHERE post_id = ?"
+
+	if _, err := tx.ExecContext(ctx, query, id); err != nil {
+		tx.Rollback()
 		return err
 	}
-
-	return nil
-}
-
-func (r *postRepo) GetApplyPost(ctx context.Context, pID int64, uID int64) (*models.ApplyPost, error) {
-	// a := &models.ApplyPost{}
-	// if err := r.db.Where("user_id = ? AND post_id = ?", uID, pID).Take(a).Error; err != nil {
-	// 	if gorm.IsRecordNotFoundError(err) {
-	// 		err = status.Errorf(codes.NotFound, "apply_post with post_id='%d' user_id='%d' is not found", pID, uID)
-	// 	}
-	// 	return nil, err
-	// }
-	// return a, nil
-	panic("not implemented")
-}
-
-func (r *postRepo) ListApplyPostsByPostID(ctx context.Context, pID int64) ([]*models.ApplyPost, error) {
-	// applyPosts := []*models.ApplyPost{}
-	// if err := r.db.Model(&models.Post{ID: pID}).Related(&applyPosts).Error; err != nil {
-	// 	return nil, err
-	// }
-	// return applyPosts, nil
-	panic("not implemented")
-}
-
-func (r *postRepo) ListApplyPostsByUserID(ctx context.Context, uID int64) ([]*models.ApplyPost, error) {
-	// applyPosts := []*models.ApplyPost{}
-	// if err := r.db.Where("user_id = ?", uID).Find(&applyPosts).Error; err != nil {
-	// 	return nil, err
-	// }
-	// return applyPosts, nil
-	panic("not implemented")
-}
-
-func (r *postRepo) ListApplyPosts(ctx context.Context, a *models.ApplyPost) ([]*models.ApplyPost, error) {
-	// applyPosts := []*models.ApplyPost{}
-	// if err := r.db.Where(a).Find(&applyPosts).Error; err != nil {
-	// 	return nil, err
-	// }
-
-	// return applyPosts, nil
-	panic("not implemented")
-}
-
-func (r *postRepo) BatchGetApplyPostsByPostIDs(ctx context.Context, postIDs []int64) ([]*models.ApplyPost, error) {
-	// applyPosts := []*models.ApplyPost{}
-	// if err := r.db.Where("post_id IN (?)", postIDs).Order("created_at DESC").Find(&applyPosts).Error; err != nil {
-	// 	return nil, err
-	// }
-	// return applyPosts, nil
-	panic("not implemented")
-}
-
-func (r *postRepo) CreateApplyPost(ctx context.Context, a *models.ApplyPost) error {
-	// if err := r.db.Create(a).Error; err != nil {
-	// 	e, ok := err.(*mysql.MySQLError)
-	// 	if ok {
-	// 		if e.Number == 1062 {
-	// 			err = status.Error(codes.AlreadyExists, err.Error())
-	// 		}
-	// 	}
-	// 	return err
-	// }
-	// return nil
-	panic("not implemented")
-}
-
-func (r *postRepo) DeleteApplyPost(ctx context.Context, pID int64, uID int64) error {
-	// return r.db.Where("user_id = ? AND post_id = ?", uID, pID).Delete(&models.ApplyPost{}).Error
-	panic("not implemented")
-}
-
-func (r *postRepo) BatchListPostsFishTypesByPostIDs(ctx context.Context, pIDs []int64) ([]*models.PostsFishType, error) {
-	query := `SELECT id, post_id, fish_type_id, created_at, updated_at
-						FROM posts_fish_types
-						WHERE post_id IN(?` + strings.Repeat(",?", len(pIDs)-1) + ")"
-	args := make([]interface{}, len(pIDs))
-	for i, pID := range pIDs {
-		args[i] = pID
-	}
-	return r.fetchPostsFishTypes(ctx, query, args...)
-}
-
-func (r *postRepo) ListFishTypeIDsByPostID(ctx context.Context, postID int64) ([]int64, error) {
-	query := `SELECT fish_type_id
-						FROM posts_fish_types
-						WHERE post_id = ?`
-	rows, err := r.db.QueryContext(ctx, query, postID)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		err := rows.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}()
-
-	ids := make([]int64, 0)
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, nil
+	return tx.Commit()
 }

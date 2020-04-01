@@ -8,6 +8,8 @@ import (
 	"github.com/ezio1119/fishapp-post/usecase/interactor"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type postController struct {
@@ -52,10 +54,6 @@ func (c *postController) CreatePost(ctx context.Context, in *post_grpc.CreatePos
 	if err != nil {
 		return nil, err
 	}
-	// pfishTypes := make([]*models.PostsFishType, len(in.FishTypeIds))
-	// for i, f := range in.FishTypeIds {
-	// 	pfishTypes[i] = &models.PostsFishType{FishTypeID: f}
-	// }
 	p := &models.Post{
 		Title:             in.Title,
 		Content:           in.Content,
@@ -78,10 +76,6 @@ func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePos
 	if err != nil {
 		return nil, err
 	}
-	// pfishTypes := make([]*models.PostsFishType, len(in.FishTypeIds))
-	// for i, f := range in.FishTypeIds {
-	// 	pfishTypes[i] = &models.PostsFishType{FishTypeID: f}
-	// }
 	p := &models.Post{
 		ID:                in.Id,
 		Title:             in.Title,
@@ -93,11 +87,10 @@ func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePos
 		MeetingAt:         mAt,
 		MaxApply:          in.MaxApply,
 	}
-	post, err := c.postInteractor.UpdatePost(ctx, p)
-	if err != nil {
+	if err := c.postInteractor.UpdatePost(ctx, p); err != nil {
 		return nil, err
 	}
-	return convPostProto(post)
+	return convPostProto(p)
 }
 
 func (c *postController) DeletePost(ctx context.Context, in *post_grpc.DeletePostReq) (*empty.Empty, error) {
@@ -108,7 +101,7 @@ func (c *postController) DeletePost(ctx context.Context, in *post_grpc.DeletePos
 }
 
 func (c *postController) GetApplyPost(ctx context.Context, in *post_grpc.GetApplyPostReq) (*post_grpc.ApplyPost, error) {
-	a, err := c.postInteractor.GetApplyPost(ctx, in.PostId, in.UserId)
+	a, err := c.postInteractor.GetApplyPost(ctx, in.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +109,9 @@ func (c *postController) GetApplyPost(ctx context.Context, in *post_grpc.GetAppl
 }
 
 func (c *postController) ListApplyPosts(ctx context.Context, in *post_grpc.ListApplyPostsReq) (*post_grpc.ListApplyPostsRes, error) {
+	if (in.Filter.UserId == 0 && in.Filter.PostId == 0) || (in.Filter.UserId != 0 && in.Filter.PostId != 0) {
+		return nil, status.Error(codes.InvalidArgument, "invalid ListApplyPostsReq.Filter.PostId, ListApplyPostsReq.Filter.UserId: value must be set either user_id or post_id")
+	}
 	list, err := c.postInteractor.ListApplyPosts(ctx, &models.ApplyPost{
 		UserID: in.Filter.UserId,
 		PostID: in.Filter.PostId,
@@ -143,7 +139,7 @@ func (c *postController) CreateApplyPost(ctx context.Context, in *post_grpc.Crea
 }
 
 func (c *postController) DeleteApplyPost(ctx context.Context, in *post_grpc.DeleteApplyPostReq) (*empty.Empty, error) {
-	if err := c.postInteractor.DeleteApplyPost(ctx, in.PostId, in.UserId); err != nil {
+	if err := c.postInteractor.DeleteApplyPost(ctx, in.Id); err != nil {
 		return nil, err
 	}
 	return &empty.Empty{}, nil

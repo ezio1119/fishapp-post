@@ -957,16 +957,9 @@ func (m *GetApplyPostReq) Validate() error {
 		return nil
 	}
 
-	if m.GetPostId() < 1 {
+	if m.GetId() < 1 {
 		return GetApplyPostReqValidationError{
-			field:  "PostId",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
-
-	if m.GetUserId() < 1 {
-		return GetApplyPostReqValidationError{
-			field:  "UserId",
+			field:  "Id",
 			reason: "value must be greater than or equal to 1",
 		}
 	}
@@ -1276,16 +1269,9 @@ func (m *DeleteApplyPostReq) Validate() error {
 		return nil
 	}
 
-	if m.GetPostId() < 1 {
+	if m.GetId() < 1 {
 		return DeleteApplyPostReqValidationError{
-			field:  "PostId",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
-
-	if m.GetUserId() < 1 {
-		return DeleteApplyPostReqValidationError{
-			field:  "UserId",
+			field:  "Id",
 			reason: "value must be greater than or equal to 1",
 		}
 	}

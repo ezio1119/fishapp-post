@@ -7,10 +7,10 @@ import (
 )
 
 type ApplyPostRepo interface {
-	GetApplyPost(ctx context.Context, pID int64, uID int64) (*models.ApplyPost, error)
-	BatchGetApplyPostsByPostIDs(ctx context.Context, postIDs []int64) ([]*models.ApplyPost, error)
-	ListApplyPosts(ctx context.Context, applyPost *models.ApplyPost) ([]*models.ApplyPost, error)
+	GetApplyPostByID(ctx context.Context, id int64) (*models.ApplyPost, error)
+	ListApplyPostsByUserID(ctx context.Context, userID int64) ([]*models.ApplyPost, error)
+	ListApplyPostsByPostID(ctx context.Context, postID int64) ([]*models.ApplyPost, error)
+	CountApplyPostsByPostID(ctx context.Context, postID int64) (int64, error)
 	CreateApplyPost(ctx context.Context, p *models.ApplyPost) error
-	DeleteApplyPost(ctx context.Context, pID int64, uID int64) error
-	CountByPostID(ctx context.Context, postID int64) (int64, error)
+	DeleteApplyPost(ctx context.Context, id int64) error
 }

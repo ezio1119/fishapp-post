@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"errors"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/interfaces/controllers/post_grpc"
@@ -104,16 +103,12 @@ func convPostFilter(f *post_grpc.ListPostsReq_Filter) (*models.PostFilter, error
 		postF.OrderBy = models.OrderByAsc
 	case post_grpc.ListPostsReq_Filter_DESC:
 		postF.OrderBy = models.OrderByDesc
-	default:
-		return nil, errors.New("ascac")
 	}
 	switch f.SortBy {
 	case post_grpc.ListPostsReq_Filter_CREATED_AT:
 		postF.SortBy = models.SortByID
 	case post_grpc.ListPostsReq_Filter_MEETING_AT:
 		postF.SortBy = models.SortByMeetingAt
-	default:
-		return nil, errors.New("ascac")
 	}
 	return postF, nil
 }

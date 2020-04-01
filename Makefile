@@ -58,4 +58,4 @@ logs:
 	docker logs -f --tail 100 post_post_1
 
 dblog:
-	docker logs -f --tail 100 post_post-db_1
+	$(DC) exec ${API}-db tail -f /var/log/mysql/query.log
