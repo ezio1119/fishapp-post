@@ -21,6 +21,7 @@ type PostInteractor interface {
 
 	GetApplyPost(ctx context.Context, id int64) (*models.ApplyPost, error)
 	ListApplyPosts(ctx context.Context, applyPost *models.ApplyPost) ([]*models.ApplyPost, error)
+	BatchGetApplyPostsByPostIDs(ctx context.Context, postIDs []int64) ([]*models.ApplyPost, error)
 	CreateApplyPost(ctx context.Context, applyPost *models.ApplyPost) error
 	DeleteApplyPost(ctx context.Context, id int64) error
 }
@@ -160,6 +161,12 @@ func (i *postInteractor) ListApplyPosts(ctx context.Context, a *models.ApplyPost
 		return i.applyPostRepo.ListApplyPostsByPostID(ctx, a.PostID)
 	}
 	return nil, nil
+}
+
+func (i *postInteractor) BatchGetApplyPostsByPostIDs(ctx context.Context, postIDs []int64) ([]*models.ApplyPost, error) {
+	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
+	defer cancel()
+	return i.applyPostRepo.BatchGetApplyPostsByPostIDs(ctx, postIDs)
 }
 
 func (i *postInteractor) CreateApplyPost(ctx context.Context, a *models.ApplyPost) error {

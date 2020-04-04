@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
@@ -82,6 +83,18 @@ func (r *applyPostRepo) ListApplyPostsByPostID(ctx context.Context, pID int64) (
 	return r.fetchApplyPosts(ctx, query, pID)
 }
 
+func (r *applyPostRepo) BatchGetApplyPostsByPostIDs(ctx context.Context, pIDs []int64) ([]*models.ApplyPost, error) {
+	query := `SELECT id, post_id, user_id, updated_at, created_at
+						FROM apply_posts
+						WHERE post_id IN(?` + strings.Repeat(",?", len(pIDs)-1) + ")"
+
+	args := make([]interface{}, len(pIDs))
+	for i, p := range pIDs {
+		args[i] = p
+	}
+	return r.fetchApplyPosts(ctx, query, args...)
+}
+
 func (r *applyPostRepo) CountApplyPostsByPostID(ctx context.Context, postID int64) (int64, error) {
 	query := `SELECT COUNT(*)
 					 FROM apply_posts
@@ -146,6 +159,7 @@ func (r *applyPostRepo) DeleteApplyPost(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
+
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
 		return err

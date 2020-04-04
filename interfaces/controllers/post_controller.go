@@ -126,6 +126,18 @@ func (c *postController) ListApplyPosts(ctx context.Context, in *post_grpc.ListA
 	return &post_grpc.ListApplyPostsRes{ApplyPosts: listProto}, nil
 }
 
+func (c *postController) BatchGetApplyPostsByPostIDs(ctx context.Context, in *post_grpc.BatchGetApplyPostsByPostIDsReq) (*post_grpc.BatchGetApplyPostsByPostIDsRes, error) {
+	list, err := c.postInteractor.BatchGetApplyPostsByPostIDs(ctx, in.PostIds)
+	if err != nil {
+		return nil, err
+	}
+	listProto, err := convListApplyPostsProto(list)
+	if err != nil {
+		return nil, err
+	}
+	return &post_grpc.BatchGetApplyPostsByPostIDsRes{ApplyPosts: listProto}, nil
+}
+
 func (c *postController) CreateApplyPost(ctx context.Context, in *post_grpc.CreateApplyPostReq) (*post_grpc.ApplyPost, error) {
 	a := &models.ApplyPost{
 		PostID: in.PostId,
