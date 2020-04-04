@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	dbConn := infrastructure.NewGormDB()
+	dbConn := infrastructure.NewMySQLDB()
 	defer func() {
 		err := dbConn.Close()
 		if err != nil {
@@ -26,6 +26,7 @@ func main() {
 	pController := controllers.NewPostController(
 		interactor.NewPostInteractor(
 			repo.NewPostRepo(dbConn),
+			repo.NewApplyPostRepo(dbConn),
 			ctxTimeout,
 		))
 	server := infrastructure.NewGrpcServer(

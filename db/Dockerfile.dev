@@ -1,0 +1,5 @@
+FROM mysql:8.0.17
+
+RUN mkdir /var/log/mysql && \
+    touch /var/log/mysql/query.log && \
+    chmod a+w /var/log/mysql/query.log

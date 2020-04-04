@@ -13,24 +13,41 @@ import (
 )
 
 type PostInteractor interface {
-	GetPost(ctx context.Context, id int64, withChildren bool) (*models.Post, error)
+	GetPost(ctx context.Context, id int64) (*models.Post, error)
 	ListPosts(ctx context.Context, p *models.Post, pageSize int64, pageToken string, filter *models.PostFilter) ([]*models.Post, string, error)
 	CreatePost(ctx context.Context, p *models.Post) error
 	UpdatePost(ctx context.Context, p *models.Post) error
-	DeletePost(ctx context.Context, id int64, userID int64) error
+	DeletePost(ctx context.Context, id int64) error
 
+	GetApplyPost(ctx context.Context, id int64) (*models.ApplyPost, error)
 	ListApplyPosts(ctx context.Context, applyPost *models.ApplyPost) ([]*models.ApplyPost, error)
+	BatchGetApplyPostsByPostIDs(ctx context.Context, postIDs []int64) ([]*models.ApplyPost, error)
 	CreateApplyPost(ctx context.Context, applyPost *models.ApplyPost) error
-	DeleteApplyPost(ctx context.Context, id int64, userID int64) error
+	DeleteApplyPost(ctx context.Context, id int64) error
 }
 
 type postInteractor struct {
-	postRepo   repo.PostRepo
-	ctxTimeout time.Duration
+	postRepo      repo.PostRepo
+	applyPostRepo repo.ApplyPostRepo
+	ctxTimeout    time.Duration
 }
 
-func NewPostInteractor(pr repo.PostRepo, timeout time.Duration) *postInteractor {
-	return &postInteractor{pr, timeout}
+func NewPostInteractor(
+	pr repo.PostRepo,
+	ar repo.ApplyPostRepo,
+	timeout time.Duration,
+) PostInteractor {
+	return &postInteractor{pr, ar, timeout}
+}
+
+func (i *postInteractor) GetPost(ctx context.Context, id int64) (*models.Post, error) {
+	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
+	defer cancel()
+	p, err := i.postRepo.GetPostByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize int64, pageToken string, f *models.PostFilter) ([]*models.Post, string, error) {
@@ -55,28 +72,22 @@ func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize
 	if err != nil {
 		return nil, "", err
 	}
-
+	nextToken := ""
 	if len(list) == int(pageSize) {
 		list = list[:pageSize-1]
-		pageToken = genPageTokenFromID(list[len(list)-1].ID)
+		nextToken = genPageTokenFromID(list[len(list)-1].ID)
 	}
 
-	return list, pageToken, nil
-}
-
-func (i *postInteractor) GetPost(ctx context.Context, id int64, with bool) (*models.Post, error) {
-	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
-	defer cancel()
-	if with {
-		return i.postRepo.GetPostWithChildlen(ctx, id)
-	}
-	return i.postRepo.GetPost(ctx, id)
+	return list, nextToken, nil
 }
 
 func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
+	now := time.Now()
+	p.CreatedAt = now
+	p.UpdatedAt = now
 	if err := i.postRepo.CreatePost(ctx, p); err != nil {
 		return err
 	}
@@ -86,98 +97,126 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) error {
 func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-
-	res, err := i.postRepo.GetPostWithChildlen(ctx, p.ID)
+	// postに紐づいているapply_postをカウント
+	cnt, err := i.applyPostRepo.CountApplyPostsByPostID(ctx, p.ID)
 	if err != nil {
 		return err
 	}
-	// if res.UserID != p.UserID {
-	// 	return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to update post_id=%d", p.UserID, res.ID)
-	// }
-	if len(res.ApplyPosts) > int(p.MaxApply) {
-		return status.Error(codes.InvalidArgument, "there are more apply than max_apply")
+	if cnt > p.MaxApply {
+		return status.Errorf(codes.FailedPrecondition, "got max_apply is %d but already have %d apply", p.MaxApply, cnt)
 	}
-	postsFishTypeIDs := make([]int64, len(res.PostsFishTypes))
-	for i, f := range res.PostsFishTypes {
-		postsFishTypeIDs[i] = f.ID
-	}
-	// postに紐づいているPostsFishTypeをすべて消す
-	if err := i.postRepo.BatchDeletePostsFishType(ctx, postsFishTypeIDs); err != nil {
+
+	now := time.Now()
+	p.UpdatedAt = now
+
+	oldP, err := i.postRepo.GetPostByID(ctx, p.ID)
+	if err != nil {
 		return err
 	}
-	// それから新しいPostsFishTypeをinsertする。batch insertはされない。
 	if err := i.postRepo.UpdatePost(ctx, p); err != nil {
 		return err
 	}
-	p.CreatedAt = res.CreatedAt
+	// 結果整合性
+	cnt, err = i.applyPostRepo.CountApplyPostsByPostID(ctx, p.ID)
+	if err != nil {
+		if err := i.postRepo.UpdatePost(ctx, oldP); err != nil {
+			return err
+		}
+		return err
+	}
+	if cnt > p.MaxApply {
+		if err := i.postRepo.UpdatePost(ctx, oldP); err != nil {
+			return err
+		}
+		return status.Errorf(codes.FailedPrecondition, "got max_apply is %d but already have %d apply", p.MaxApply, cnt)
+	}
+	// 完全なデータで返すため
+	p.CreatedAt = oldP.CreatedAt
+	p.UserID = oldP.UserID
 	return nil
 }
 
-func (i *postInteractor) DeletePost(ctx context.Context, id int64, uID int64) error {
-
+func (i *postInteractor) DeletePost(ctx context.Context, id int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-
-	res, err := i.postRepo.GetPost(ctx, id)
-	if err != nil {
-		return err
-	}
-	if res.UserID != uID {
-		return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to delete post_id=%d", uID, id)
-	}
-
 	if err := i.postRepo.DeletePost(ctx, id); err != nil {
 		return err
 	}
 	return nil
 }
 
+func (i *postInteractor) GetApplyPost(ctx context.Context, id int64) (*models.ApplyPost, error) {
+	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
+	defer cancel()
+	return i.applyPostRepo.GetApplyPostByID(ctx, id)
+}
+
 func (i *postInteractor) ListApplyPosts(ctx context.Context, a *models.ApplyPost) ([]*models.ApplyPost, error) {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-	// バリデーションここでいいのかな proto-gen-validateでできなかった
-	if a.UserID == 0 && a.PostID == 0 {
-		return nil, status.Error(codes.InvalidArgument, "enter a value for either user_id or post_id")
+	if a.UserID != 0 {
+		return i.applyPostRepo.ListApplyPostsByUserID(ctx, a.UserID)
 	}
+	if a.PostID != 0 {
+		return i.applyPostRepo.ListApplyPostsByPostID(ctx, a.PostID)
+	}
+	return nil, nil
+}
 
-	return i.postRepo.ListApplyPosts(ctx, a)
+func (i *postInteractor) BatchGetApplyPostsByPostIDs(ctx context.Context, postIDs []int64) ([]*models.ApplyPost, error) {
+	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
+	defer cancel()
+	return i.applyPostRepo.BatchGetApplyPostsByPostIDs(ctx, postIDs)
 }
 
 func (i *postInteractor) CreateApplyPost(ctx context.Context, a *models.ApplyPost) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-	p, err := i.postRepo.GetPost(ctx, a.PostID)
+	cnt, err := i.applyPostRepo.CountApplyPostsByPostID(ctx, a.PostID)
 	if err != nil {
 		return err
 	}
-	if p.UserID == a.UserID {
-		return status.Error(codes.PermissionDenied, "cannot apply your own post")
-	}
-	res, err := i.postRepo.ListApplyPosts(ctx, &models.ApplyPost{PostID: a.PostID})
+	p, err := i.postRepo.GetPostByID(ctx, a.PostID)
 	if err != nil {
 		return err
 	}
-	if len(res) >= int(p.MaxApply) {
-		return status.Error(codes.InvalidArgument, "cannot apply because upper limit")
+	if p.MaxApply <= cnt {
+		return status.Error(codes.FailedPrecondition, "already reached max_apply limit")
 	}
-	if err := i.postRepo.CreateApplyPost(ctx, a); err != nil {
+	now := time.Now()
+	a.CreatedAt = now
+	a.UpdatedAt = now
+	if err := i.applyPostRepo.CreateApplyPost(ctx, a); err != nil {
 		return err
+	}
+	// 結果整合性
+	cnt, err = i.applyPostRepo.CountApplyPostsByPostID(ctx, a.PostID)
+	if err != nil {
+		if err := i.applyPostRepo.DeleteApplyPost(ctx, a.ID); err != nil {
+			return err
+		}
+		return err
+	}
+	p, err = i.postRepo.GetPostByID(ctx, a.PostID)
+	if err != nil {
+		if err := i.applyPostRepo.DeleteApplyPost(ctx, a.ID); err != nil {
+			return err
+		}
+		return err
+	}
+	if p.MaxApply < cnt {
+		if err := i.applyPostRepo.DeleteApplyPost(ctx, a.ID); err != nil {
+			return err
+		}
+		return status.Error(codes.FailedPrecondition, "already reached max_apply limit")
 	}
 	return nil
 }
 
-func (i *postInteractor) DeleteApplyPost(ctx context.Context, id int64, uID int64) error {
+func (i *postInteractor) DeleteApplyPost(ctx context.Context, id int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-
-	a, err := i.postRepo.GetApplyPost(ctx, id)
-	if err != nil {
-		return err
-	}
-	if a.UserID != uID {
-		return status.Errorf(codes.PermissionDenied, "user_id=%d does not have permission to Delete apply_post_id=%d", uID, id)
-	}
-	if err := i.postRepo.DeleteApplyPost(ctx, a.UserID); err != nil {
+	if err := i.applyPostRepo.DeleteApplyPost(ctx, id); err != nil {
 		return err
 	}
 	return nil

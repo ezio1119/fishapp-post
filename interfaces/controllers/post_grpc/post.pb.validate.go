@@ -69,21 +69,6 @@ func (m *Post) Validate() error {
 
 	// no validation rules for MaxApply
 
-	for idx, item := range m.GetApplyPosts() {
-		_, _ = idx, item
-
-		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return PostValidationError{
-					field:  fmt.Sprintf("ApplyPosts[%v]", idx),
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
-			}
-		}
-
-	}
-
 	if v, ok := interface{}(m.GetCreatedAt()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return PostValidationError{
@@ -264,8 +249,6 @@ func (m *GetPostReq) Validate() error {
 			reason: "value must be greater than or equal to 1",
 		}
 	}
-
-	// no validation rules for WithChildren
 
 	return nil
 }
@@ -526,6 +509,13 @@ func (m *CreatePostReq) Validate() error {
 		}
 	}
 
+	if len(m.GetFishTypeIds()) < 1 {
+		return CreatePostReqValidationError{
+			field:  "FishTypeIds",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
 	_CreatePostReq_FishTypeIds_Unique := make(map[int64]struct{}, len(m.GetFishTypeIds()))
 
 	for idx, item := range m.GetFishTypeIds() {
@@ -540,7 +530,13 @@ func (m *CreatePostReq) Validate() error {
 			_CreatePostReq_FishTypeIds_Unique[item] = struct{}{}
 		}
 
-		// no validation rules for FishTypeIds[idx]
+		if val := item; val < 1 || val > 95 {
+			return CreatePostReqValidationError{
+				field:  fmt.Sprintf("FishTypeIds[%v]", idx),
+				reason: "value must be inside range [1, 95]",
+			}
+		}
+
 	}
 
 	if val := m.GetPrefectureId(); val < 1 || val > 47 {
@@ -685,6 +681,13 @@ func (m *UpdatePostReq) Validate() error {
 		}
 	}
 
+	if len(m.GetFishTypeIds()) < 1 {
+		return UpdatePostReqValidationError{
+			field:  "FishTypeIds",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
 	_UpdatePostReq_FishTypeIds_Unique := make(map[int64]struct{}, len(m.GetFishTypeIds()))
 
 	for idx, item := range m.GetFishTypeIds() {
@@ -699,7 +702,13 @@ func (m *UpdatePostReq) Validate() error {
 			_UpdatePostReq_FishTypeIds_Unique[item] = struct{}{}
 		}
 
-		// no validation rules for FishTypeIds[idx]
+		if val := item; val < 1 || val > 95 {
+			return UpdatePostReqValidationError{
+				field:  fmt.Sprintf("FishTypeIds[%v]", idx),
+				reason: "value must be inside range [1, 95]",
+			}
+		}
+
 	}
 
 	if val := m.GetPrefectureId(); val < 1 || val > 47 {
@@ -740,13 +749,6 @@ func (m *UpdatePostReq) Validate() error {
 	if m.GetMaxApply() < 1 {
 		return UpdatePostReqValidationError{
 			field:  "MaxApply",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
-
-	if m.GetUserId() < 1 {
-		return UpdatePostReqValidationError{
-			field:  "UserId",
 			reason: "value must be greater than or equal to 1",
 		}
 	}
@@ -819,13 +821,6 @@ func (m *DeletePostReq) Validate() error {
 	if m.GetId() < 1 {
 		return DeletePostReqValidationError{
 			field:  "Id",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
-
-	if m.GetUserId() < 1 {
-		return DeletePostReqValidationError{
-			field:  "UserId",
 			reason: "value must be greater than or equal to 1",
 		}
 	}
@@ -953,6 +948,78 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = DeletePostResValidationError{}
+
+// Validate checks the field values on GetApplyPostReq with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *GetApplyPostReq) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if m.GetId() < 1 {
+		return GetApplyPostReqValidationError{
+			field:  "Id",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
+	return nil
+}
+
+// GetApplyPostReqValidationError is the validation error returned by
+// GetApplyPostReq.Validate if the designated constraints aren't met.
+type GetApplyPostReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetApplyPostReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetApplyPostReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetApplyPostReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetApplyPostReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetApplyPostReqValidationError) ErrorName() string { return "GetApplyPostReqValidationError" }
+
+// Error satisfies the builtin error interface
+func (e GetApplyPostReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetApplyPostReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetApplyPostReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetApplyPostReqValidationError{}
 
 // Validate checks the field values on ListApplyPostsReq with the rules defined
 // in the proto definition for this message. If any rules are violated, an
@@ -1113,6 +1180,187 @@ var _ interface {
 	ErrorName() string
 } = ListApplyPostsResValidationError{}
 
+// Validate checks the field values on BatchGetApplyPostsByPostIDsReq with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *BatchGetApplyPostsByPostIDsReq) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if len(m.GetPostIds()) < 1 {
+		return BatchGetApplyPostsByPostIDsReqValidationError{
+			field:  "PostIds",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
+	_BatchGetApplyPostsByPostIDsReq_PostIds_Unique := make(map[int64]struct{}, len(m.GetPostIds()))
+
+	for idx, item := range m.GetPostIds() {
+		_, _ = idx, item
+
+		if _, exists := _BatchGetApplyPostsByPostIDsReq_PostIds_Unique[item]; exists {
+			return BatchGetApplyPostsByPostIDsReqValidationError{
+				field:  fmt.Sprintf("PostIds[%v]", idx),
+				reason: "repeated value must contain unique items",
+			}
+		} else {
+			_BatchGetApplyPostsByPostIDsReq_PostIds_Unique[item] = struct{}{}
+		}
+
+		if item < 1 {
+			return BatchGetApplyPostsByPostIDsReqValidationError{
+				field:  fmt.Sprintf("PostIds[%v]", idx),
+				reason: "value must be greater than or equal to 1",
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// BatchGetApplyPostsByPostIDsReqValidationError is the validation error
+// returned by BatchGetApplyPostsByPostIDsReq.Validate if the designated
+// constraints aren't met.
+type BatchGetApplyPostsByPostIDsReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e BatchGetApplyPostsByPostIDsReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e BatchGetApplyPostsByPostIDsReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e BatchGetApplyPostsByPostIDsReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e BatchGetApplyPostsByPostIDsReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e BatchGetApplyPostsByPostIDsReqValidationError) ErrorName() string {
+	return "BatchGetApplyPostsByPostIDsReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e BatchGetApplyPostsByPostIDsReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sBatchGetApplyPostsByPostIDsReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = BatchGetApplyPostsByPostIDsReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = BatchGetApplyPostsByPostIDsReqValidationError{}
+
+// Validate checks the field values on BatchGetApplyPostsByPostIDsRes with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *BatchGetApplyPostsByPostIDsRes) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	for idx, item := range m.GetApplyPosts() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return BatchGetApplyPostsByPostIDsResValidationError{
+					field:  fmt.Sprintf("ApplyPosts[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// BatchGetApplyPostsByPostIDsResValidationError is the validation error
+// returned by BatchGetApplyPostsByPostIDsRes.Validate if the designated
+// constraints aren't met.
+type BatchGetApplyPostsByPostIDsResValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e BatchGetApplyPostsByPostIDsResValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e BatchGetApplyPostsByPostIDsResValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e BatchGetApplyPostsByPostIDsResValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e BatchGetApplyPostsByPostIDsResValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e BatchGetApplyPostsByPostIDsResValidationError) ErrorName() string {
+	return "BatchGetApplyPostsByPostIDsResValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e BatchGetApplyPostsByPostIDsResValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sBatchGetApplyPostsByPostIDsRes.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = BatchGetApplyPostsByPostIDsResValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = BatchGetApplyPostsByPostIDsResValidationError{}
+
 // Validate checks the field values on CreateApplyPostReq with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.
@@ -1205,13 +1453,6 @@ func (m *DeleteApplyPostReq) Validate() error {
 	if m.GetId() < 1 {
 		return DeleteApplyPostReqValidationError{
 			field:  "Id",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
-
-	if m.GetUserId() < 1 {
-		return DeleteApplyPostReqValidationError{
-			field:  "UserId",
 			reason: "value must be greater than or equal to 1",
 		}
 	}

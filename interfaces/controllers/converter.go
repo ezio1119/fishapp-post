@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/interfaces/controllers/post_grpc"
@@ -23,25 +21,16 @@ func convPostProto(p *models.Post) (*post_grpc.Post, error) {
 	if err != nil {
 		return nil, err
 	}
-	fishTypeIds := make([]int64, len(p.PostsFishTypes))
-	for i, t := range p.PostsFishTypes {
-		fishTypeIds[i] = t.FishTypeID
-	}
-	aProto, err := convListApplyPostsProto(p.ApplyPosts)
-	if err != nil {
-		return nil, err
-	}
 	return &post_grpc.Post{
 		Id:                p.ID,
 		Title:             p.Title,
 		Content:           p.Content,
 		FishingSpotTypeId: p.FishingSpotTypeID,
-		FishTypeIds:       fishTypeIds,
+		FishTypeIds:       p.FishTypeIDs,
 		PrefectureId:      p.PrefectureID,
 		MeetingPlaceId:    p.MeetingPlaceID,
 		MeetingAt:         mAt,
 		MaxApply:          p.MaxApply,
-		ApplyPosts:        aProto,
 		UserId:            p.UserID,
 		CreatedAt:         cAt,
 		UpdatedAt:         uAt,
@@ -79,7 +68,6 @@ func convApplyPostProto(a *models.ApplyPost) (*post_grpc.ApplyPost, error) {
 }
 
 func convListApplyPostsProto(list []*models.ApplyPost) ([]*post_grpc.ApplyPost, error) {
-	fmt.Printf("%#v\n", list)
 	listA := make([]*post_grpc.ApplyPost, len(list))
 	for i, a := range list {
 		aP, err := convApplyPostProto(a)
@@ -115,16 +103,12 @@ func convPostFilter(f *post_grpc.ListPostsReq_Filter) (*models.PostFilter, error
 		postF.OrderBy = models.OrderByAsc
 	case post_grpc.ListPostsReq_Filter_DESC:
 		postF.OrderBy = models.OrderByDesc
-	default:
-		return nil, errors.New("ascac")
 	}
 	switch f.SortBy {
 	case post_grpc.ListPostsReq_Filter_CREATED_AT:
 		postF.SortBy = models.SortByID
 	case post_grpc.ListPostsReq_Filter_MEETING_AT:
 		postF.SortBy = models.SortByMeetingAt
-	default:
-		return nil, errors.New("ascac")
 	}
 	return postF, nil
 }
