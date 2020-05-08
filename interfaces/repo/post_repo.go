@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
@@ -12,6 +13,7 @@ import (
 	"github.com/ezio1119/fishapp-post/usecase/repo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type postRepo struct {
@@ -88,8 +90,8 @@ func (r *postRepo) fetchPostsFishTypes(ctx context.Context, query string, args .
 
 func (r *postRepo) fillPostWithFishTypeIDs(ctx context.Context, p *models.Post) error {
 	query := `SELECT fish_type_id
-						FROM posts_fish_types
-						WHERE post_id = ?`
+           	FROM posts_fish_types
+						 WHERE post_id = ?`
 	rows, err := r.db.QueryContext(ctx, query, p.ID)
 	if err != nil {
 		return err
@@ -111,13 +113,14 @@ func (r *postRepo) fillPostWithFishTypeIDs(ctx context.Context, p *models.Post) 
 		ids = append(ids, id)
 	}
 	p.FishTypeIDs = ids
+
 	return nil
 }
 
 func (r *postRepo) fillListPostsWithFishTypeIDs(ctx context.Context, posts []*models.Post) error {
 	query := `SELECT post_id, fish_type_id
-						FROM posts_fish_types
-						WHERE post_id IN(?` + strings.Repeat(",?", len(posts)-1) + ")"
+                        FROM posts_fish_types
+                        WHERE post_id IN(?` + strings.Repeat(",?", len(posts)-1) + ")"
 
 	args := make([]interface{}, len(posts))
 	for i, p := range posts {
@@ -133,6 +136,45 @@ func (r *postRepo) fillListPostsWithFishTypeIDs(ctx context.Context, posts []*mo
 				p.FishTypeIDs = append(p.FishTypeIDs, f.FishTypeID)
 			}
 		}
+	}
+	return nil
+}
+
+func (r *postRepo) batchCreatePostsFishTypesTX(ctx context.Context, tx *sql.Tx, p *models.Post) error {
+	query := `INSERT INTO posts_fish_types(post_id, fish_type_id, created_at, updated_at)
+                     VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.FishTypeIDs)-1)
+
+	args := make([]interface{}, len(p.FishTypeIDs)*4)
+	for i, fID := range p.FishTypeIDs {
+		args[i*4] = p.ID
+		args[i*4+1] = fID
+		args[i*4+2] = p.CreatedAt
+		args[i*4+3] = p.UpdatedAt
+	}
+
+	res, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	rowCnt, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if int(rowCnt) != len(p.FishTypeIDs) {
+		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.FishTypeIDs), rowCnt)
+	}
+
+	return nil
+}
+
+func (r *postRepo) deletePostsFishTypesByPostIDTX(ctx context.Context, tx *sql.Tx, pID int64) error {
+	query := "DELETE FROM posts_fish_types WHERE post_id = ?"
+	res, err := tx.ExecContext(ctx, query, pID)
+	if err != nil {
+		return err
+	}
+	if _, err := res.RowsAffected(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -170,30 +212,30 @@ func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
 	p.ID = lastID
 
 	// postsFishTypesをbatch insert
-	query = `INSERT INTO posts_fish_types(post_id, fish_type_id, created_at, updated_at)
-					 VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.FishTypeIDs)-1)
-
-	args := make([]interface{}, len(p.FishTypeIDs)*4)
-	for i, fID := range p.FishTypeIDs {
-		args[i*4] = p.ID
-		args[i*4+1] = fID
-		args[i*4+2] = p.CreatedAt
-		args[i*4+3] = p.UpdatedAt
+	if err := r.batchCreatePostsFishTypesTX(ctx, tx, p); err != nil {
+		tx.Rollback()
+		return err
 	}
 
-	res, err = tx.ExecContext(ctx, query, args...)
+	pProto, err := convPostCreatedProto(p)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	rowCnt, err = res.RowsAffected()
+	eventData, err := protojson.Marshal(pProto)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	if int(rowCnt) != len(p.FishTypeIDs) {
+
+	if err := createOutboxTX(ctx, tx, &models.Outbox{
+		EventType:     "post.created",
+		EventData:     eventData,
+		AggregateID:   strconv.FormatInt(p.ID, 10),
+		AggregateType: "post",
+	}); err != nil {
 		tx.Rollback()
-		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.FishTypeIDs), rowCnt)
+		return err
 	}
 
 	return tx.Commit()
@@ -201,8 +243,8 @@ func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
 
 func (r *postRepo) GetPostByID(ctx context.Context, id int64) (*models.Post, error) {
 	query := `SELECT id, title, content, fishing_spot_type_id, prefecture_id, meeting_place_id, meeting_at, max_apply, user_id, updated_at, created_at
-						FROM posts
-						WHERE id = ?`
+                        FROM posts
+                        WHERE id = ?`
 
 	list, err := r.fetchPosts(ctx, query, id)
 	if err != nil {
@@ -293,7 +335,7 @@ func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cur
 
 func (r *postRepo) UpdatePost(ctx context.Context, p *models.Post) error {
 	query := `UPDATE posts SET title=?, content=?, fishing_spot_type_id=?, prefecture_id=?, meeting_place_id=?, meeting_at=?, max_apply=?, updated_at=?
-						WHERE id = ?`
+                        WHERE id = ?`
 	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return nil
@@ -313,41 +355,14 @@ func (r *postRepo) UpdatePost(ctx context.Context, p *models.Post) error {
 		return fmt.Errorf("expected %d row affected, got %d rows affected", 1, rowCnt)
 	}
 
-	query = "DELETE FROM posts_fish_types WHERE post_id = ?"
-	res, err = tx.ExecContext(ctx, query, p.ID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	if _, err = res.RowsAffected(); err != nil {
+	if err := r.deletePostsFishTypesByPostIDTX(ctx, tx, p.ID); err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	query = `INSERT INTO posts_fish_types(post_id, fish_type_id, created_at, updated_at)
-					 VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.FishTypeIDs)-1)
-
-	args := make([]interface{}, len(p.FishTypeIDs)*4)
-	for i, fID := range p.FishTypeIDs {
-		args[i*4] = p.ID
-		args[i*4+1] = fID
-		args[i*4+2] = p.UpdatedAt
-		args[i*4+3] = p.UpdatedAt
-	}
-
-	res, err = tx.ExecContext(ctx, query, args...)
-	if err != nil {
+	if err := r.batchCreatePostsFishTypesTX(ctx, tx, p); err != nil {
 		tx.Rollback()
 		return err
-	}
-	rowCnt, err = res.RowsAffected()
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	if int(rowCnt) != len(p.FishTypeIDs) {
-		tx.Rollback()
-		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.FishTypeIDs), rowCnt)
 	}
 
 	return tx.Commit()

@@ -1,4 +1,4 @@
-FROM mysql:8.0.17
+FROM mysql:8.0
 
 RUN mkdir /var/log/mysql && \
     touch /var/log/mysql/query.log && \

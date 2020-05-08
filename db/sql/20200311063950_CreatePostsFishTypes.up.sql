@@ -9,4 +9,4 @@ CREATE TABLE `posts_fish_types`(
   FOREIGN KEY (`post_id`) 
     REFERENCES posts(`id`)
     ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_ja_0900_as_cs;
+);

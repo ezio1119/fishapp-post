@@ -10,7 +10,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/envoyproxy/protoc-gen-validate v0.3.0
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/golang/protobuf v1.3.4
+	github.com/golang/protobuf v1.4.0
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/jinzhu/gorm v1.9.12
@@ -22,4 +22,5 @@ require (
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/api v0.21.0 // indirect
 	google.golang.org/grpc v1.27.1
+	google.golang.org/protobuf v1.22.0
 )

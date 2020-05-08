@@ -57,8 +57,8 @@ func (r *applyPostRepo) fetchApplyPosts(ctx context.Context, query string, args 
 
 func (r *applyPostRepo) GetApplyPostByID(ctx context.Context, id int64) (*models.ApplyPost, error) {
 	query := `SELECT id, post_id, user_id, updated_at, created_at
-						FROM apply_posts
-						WHERE id = ?`
+                        FROM apply_posts
+                        WHERE id = ?`
 	list, err := r.fetchApplyPosts(ctx, query, id)
 	if err != nil {
 		return nil, err
@@ -71,22 +71,22 @@ func (r *applyPostRepo) GetApplyPostByID(ctx context.Context, id int64) (*models
 
 func (r *applyPostRepo) ListApplyPostsByUserID(ctx context.Context, uID int64) ([]*models.ApplyPost, error) {
 	query := `SELECT id, post_id, user_id, updated_at, created_at
-						FROM apply_posts
-						WHERE user_id = ?`
+                        FROM apply_posts
+                        WHERE user_id = ?`
 	return r.fetchApplyPosts(ctx, query, uID)
 }
 
 func (r *applyPostRepo) ListApplyPostsByPostID(ctx context.Context, pID int64) ([]*models.ApplyPost, error) {
 	query := `SELECT id, post_id, user_id, updated_at, created_at
-						FROM apply_posts
-						WHERE post_id = ?`
+                        FROM apply_posts
+                        WHERE post_id = ?`
 	return r.fetchApplyPosts(ctx, query, pID)
 }
 
 func (r *applyPostRepo) BatchGetApplyPostsByPostIDs(ctx context.Context, pIDs []int64) ([]*models.ApplyPost, error) {
 	query := `SELECT id, post_id, user_id, updated_at, created_at
-						FROM apply_posts
-						WHERE post_id IN(?` + strings.Repeat(",?", len(pIDs)-1) + ")"
+                        FROM apply_posts
+                        WHERE post_id IN(?` + strings.Repeat(",?", len(pIDs)-1) + ")"
 
 	args := make([]interface{}, len(pIDs))
 	for i, p := range pIDs {
@@ -97,8 +97,8 @@ func (r *applyPostRepo) BatchGetApplyPostsByPostIDs(ctx context.Context, pIDs []
 
 func (r *applyPostRepo) CountApplyPostsByPostID(ctx context.Context, postID int64) (int64, error) {
 	query := `SELECT COUNT(*)
-					 FROM apply_posts
-					 WHERE post_id = ?`
+                     FROM apply_posts
+                     WHERE post_id = ?`
 	var cnt int64
 	rows, err := r.db.QueryContext(ctx, query, postID)
 	if err != nil {

@@ -35,6 +35,7 @@ func convPostProto(p *models.Post) (*post_grpc.Post, error) {
 		CreatedAt:         cAt,
 		UpdatedAt:         uAt,
 	}, nil
+
 }
 
 func convListPostsProto(list []*models.Post) ([]*post_grpc.Post, error) {
