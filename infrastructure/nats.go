@@ -23,7 +23,9 @@ func StartSubscribeCreatePostSagaReply(conn stan.Conn, c controllers.SagaReplyCo
 
 		switch e.EventType {
 		case "room.created":
-			json.
+			event.
+			protojson.Unmarshal(e.EventData, m proto.Message)
+			e.EventData
 			c.RoomCreated(ctx, sagaID string)
 		}
 
