@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
@@ -13,7 +12,6 @@ import (
 	"github.com/ezio1119/fishapp-post/usecase/repo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type postRepo struct {
@@ -217,34 +215,13 @@ func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
 		return err
 	}
 
-	pProto, err := convPostCreatedProto(p)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	eventData, err := protojson.Marshal(pProto)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := createOutboxTX(ctx, tx, &models.Outbox{
-		EventType:     "post.created",
-		EventData:     eventData,
-		AggregateID:   strconv.FormatInt(p.ID, 10),
-		AggregateType: "post",
-	}); err != nil {
-		tx.Rollback()
-		return err
-	}
-
 	return tx.Commit()
 }
 
 func (r *postRepo) GetPostByID(ctx context.Context, id int64) (*models.Post, error) {
 	query := `SELECT id, title, content, fishing_spot_type_id, prefecture_id, meeting_place_id, meeting_at, max_apply, user_id, updated_at, created_at
-                        FROM posts
-                        WHERE id = ?`
+            FROM posts
+            WHERE id = ?`
 
 	list, err := r.fetchPosts(ctx, query, id)
 	if err != nil {

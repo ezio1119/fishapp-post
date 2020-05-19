@@ -4,34 +4,25 @@ API = post
 
 sqldoc:
 	docker run --rm --net=fishapp-net -v $(CURRENT_DIR)/db:/work ezio1119/tbls \
-	doc -f -t svg mysql://root:password@${API}-db:3306/${API}_DB ./
+	doc -f -t svg mysql://root:password@$(API)-db:3306/$(API)_DB ./
 
 proto:
-	docker run --rm -v $(CURRENT_DIR)/interfaces/controllers/${API}_grpc:$(CURRENT_DIR) \
-	-v $(CURRENT_DIR)/schema/${API}:/schema \
-	-w $(CURRENT_DIR) ezio1119/protoc \
-	-I/schema \
-	-I/go/src/github.com/envoyproxy/protoc-gen-validate  \
-	--doc_out=markdown,README.md:/schema \
-	--go_out=plugins=grpc:. \
-	--validate_out="lang=go:." \
-	${API}.proto
-
-	docker run --rm -v $(CURRENT_DIR)/schema:/schema -v $(CURRENT_DIR)/interfaces/controllers:/work ezio1119/protoc \
-	-I/schema \
-	--doc_out=/schema \
-	--doc_opt=markdown,README.md \
-	--go_out=:/work \
-	/schema/event/event.proto
+	docker run --rm -v $(CURRENT_DIR)/pb:/pb -v $(CURRENT_DIR)/schema:/proto ezio1119/protoc \
+	-I/proto \
+	-I/go/src/github.com/envoyproxy/protoc-gen-validate \
+	--go_opt=paths=source_relative \
+	--go_out=plugins=grpc:/pb \
+	--validate_out="lang=go,paths=source_relative:/pb" \
+	chat/chat.proto event/event.proto
 
 cli:
 	docker run --rm --net=fishapp-net znly/grpc_cli \
-	call ${API}:50051 ${API}_grpc.PostService.$(m) "$(q)"
+	call $(API):50051 $(API)_grpc.PostService.$(m) "$(q)"
 
 migrate:
 	docker run --rm --name migrate --net=fishapp-net \
 	-v $(CURRENT_DIR)/db/sql:/sql migrate/migrate:latest \
-	-path /sql/ -database "mysql://root:password@tcp($(API)-db:3306)/$(API)_DB" down
+	-path /sql/ -database "mysql://root:password@tcp($(API)-db:3306)/$(API)_DB" ${a}
 
 # seed:
 # 	docker run --rm --name seed arey/mysql-client sh
@@ -42,7 +33,7 @@ newsql:
 	migrate/migrate:latest create -ext sql -dir ./sql ${n}
 
 test:
-	$(DC) exec ${API} sh -c "go test -v -coverprofile=cover.out ./... && \
+	$(DC) exec $(API) sh -c "go test -v -coverprofile=cover.out ./... && \
 	go tool cover -html=cover.out -o ./cover.html" && \
 	open ./src/cover.html
 
@@ -59,10 +50,10 @@ down:
 	$(DC) rm post-db
 
 exec:
-	$(DC) exec ${API} sh
+	$(DC) exec $(API) sh
 
 logs:
 	$(DC) logs -f post-db
 
 dblog:
-	$(DC) exec ${API}-db tail -f /var/log/mysql/query.log
+	$(DC) exec $(API)-db tail -f -n 100 /var/log/mysql/query.log

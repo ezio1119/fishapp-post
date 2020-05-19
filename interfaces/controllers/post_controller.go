@@ -49,7 +49,7 @@ func (c *postController) ListPosts(ctx context.Context, in *post_grpc.ListPostsR
 	return &post_grpc.ListPostsRes{Posts: listProto, NextPageToken: nextToken}, nil
 }
 
-func (c *postController) CreatePost(ctx context.Context, in *post_grpc.CreatePostReq) (*post_grpc.Post, error) {
+func (c *postController) CreatePost(ctx context.Context, in *post_grpc.CreatePostReq) (*post_grpc.CreatePostRes, error) {
 	mAt, err := ptypes.Timestamp(in.MeetingAt)
 	if err != nil {
 		return nil, err
@@ -65,10 +65,18 @@ func (c *postController) CreatePost(ctx context.Context, in *post_grpc.CreatePos
 		MaxApply:          in.MaxApply,
 		UserID:            in.UserId,
 	}
-	if err := c.postInteractor.CreatePost(ctx, p); err != nil {
+	sagaID, err := c.postInteractor.CreatePost(ctx, p)
+	if err != nil {
 		return nil, err
 	}
-	return convPostProto(p)
+	pProto, err := convPostProto(p)
+	if err != nil {
+		return nil, err
+	}
+	return &post_grpc.CreatePostRes{
+		Post:   pProto,
+		SagaId: sagaID,
+	}, nil
 }
 
 func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePostReq) (*post_grpc.Post, error) {

@@ -8,6 +8,7 @@ import (
 	"github.com/ezio1119/fishapp-post/conf"
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -15,7 +16,7 @@ import (
 type PostInteractor interface {
 	GetPost(ctx context.Context, id int64) (*models.Post, error)
 	ListPosts(ctx context.Context, p *models.Post, pageSize int64, pageToken string, filter *models.PostFilter) ([]*models.Post, string, error)
-	CreatePost(ctx context.Context, p *models.Post) error
+	CreatePost(ctx context.Context, p *models.Post) (string, error)
 	UpdatePost(ctx context.Context, p *models.Post) error
 	DeletePost(ctx context.Context, id int64) error
 
@@ -29,15 +30,17 @@ type PostInteractor interface {
 type postInteractor struct {
 	postRepo      repo.PostRepo
 	applyPostRepo repo.ApplyPostRepo
+	outboxRepo    repo.OutboxRepo
 	ctxTimeout    time.Duration
 }
 
 func NewPostInteractor(
 	pr repo.PostRepo,
 	ar repo.ApplyPostRepo,
+	or repo.OutboxRepo,
 	timeout time.Duration,
 ) PostInteractor {
-	return &postInteractor{pr, ar, timeout}
+	return &postInteractor{pr, ar, or, timeout}
 }
 
 func (i *postInteractor) GetPost(ctx context.Context, id int64) (*models.Post, error) {
@@ -81,7 +84,7 @@ func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize
 	return list, nextToken, nil
 }
 
-func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) error {
+func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
@@ -89,9 +92,24 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post) error {
 	p.CreatedAt = now
 	p.UpdatedAt = now
 	if err := i.postRepo.CreatePost(ctx, p); err != nil {
-		return err
+		return "", err
 	}
-	return nil
+
+	sagaID, err := uuid.NewUUID()
+	if err != nil {
+		return "", err
+	}
+	s := newCreatePostSagaState(p, i.outboxRepo, sagaID.String())
+	// fmt.Println(s.FSM.Current())
+	// if err := s.FSM.Event("UploadImage"); err != nil {
+	// 	fmt.Println(err)
+	// }
+	fmt.Println(s.FSM.Current())
+	if err := s.FSM.Event("CreateRoom"); err != nil {
+		return "", err
+	}
+	fmt.Println(s.FSM.Current())
+	return sagaID.String(), nil
 }
 
 func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post) error {
@@ -192,6 +210,7 @@ func (i *postInteractor) CreateApplyPost(ctx context.Context, a *models.ApplyPos
 	// 結果整合性
 	cnt, err = i.applyPostRepo.CountApplyPostsByPostID(ctx, a.PostID)
 	if err != nil {
+		// 補償トランザクション
 		if err := i.applyPostRepo.DeleteApplyPost(ctx, a.ID); err != nil {
 			return err
 		}

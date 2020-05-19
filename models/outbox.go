@@ -1,7 +1,7 @@
 package models
 
 type Outbox struct {
-	ID            int64
+	ID            string
 	EventType     string
 	EventData     []byte
 	AggregateID   string

@@ -15,7 +15,7 @@ jobs:
     name: Setup, Build, Publish
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
       with:
           version: '278.0.0'

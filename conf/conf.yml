@@ -13,3 +13,7 @@ sv:
   port: 50051
   debug: true
   defaultPageSize: 30
+nats:
+  url: "nats-streaming:4223"
+  clusterid: "fishapp-cluster"
+  clientid: "fishapp-relaylog"

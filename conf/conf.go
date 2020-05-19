@@ -28,6 +28,11 @@ type config struct {
 		Debug           bool
 		DefaultPageSize int64
 	}
+	Nats struct {
+		URL       string
+		ClusterID string
+		ClientID  string
+	}
 }
 
 var C config
