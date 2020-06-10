@@ -2,14 +2,13 @@ package infrastructure
 
 import (
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/conf"
 	"github.com/go-sql-driver/mysql"
 )
 
-func NewMySQLDB() *sql.DB {
+func NewMySQLDB() (*sql.DB, error) {
 	mysqlConf := &mysql.Config{
 		User:                 conf.C.Db.User,
 		Passwd:               conf.C.Db.Pass,
@@ -23,10 +22,10 @@ func NewMySQLDB() *sql.DB {
 
 	db, err := sql.Open(conf.C.Db.Dbms, mysqlConf.FormatDSN())
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	if err = db.Ping(); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	return db
+	return db, nil
 }

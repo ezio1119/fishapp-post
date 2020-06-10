@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (*middleware) RecoveryInterceptor() grpc.UnaryServerInterceptor {
+func (*middleware) UnaryRecoveryInterceptor() grpc.UnaryServerInterceptor {
 	customFunc := func(p interface{}) (err error) {
 		return status.Errorf(codes.Internal, "panic triggered: %v", p)
 	}
@@ -16,4 +16,15 @@ func (*middleware) RecoveryInterceptor() grpc.UnaryServerInterceptor {
 		grpc_recovery.WithRecoveryHandler(customFunc),
 	}
 	return grpc_recovery.UnaryServerInterceptor(opts...)
+}
+
+func (*middleware) StreamRecoveryInterceptor() grpc.StreamServerInterceptor {
+	customFunc := func(p interface{}) (err error) {
+		return status.Errorf(codes.Internal, "panic triggered: %v", p)
+	}
+	// Shared options for the logger, with a custom gRPC code to log level function.
+	opts := []grpc_recovery.Option{
+		grpc_recovery.WithRecoveryHandler(customFunc),
+	}
+	return grpc_recovery.StreamServerInterceptor(opts...)
 }

@@ -10,16 +10,22 @@ import (
 )
 
 type sagaInstanceRepo struct {
-	db *sql.DB
+	SqlHandler
 }
 
-func NewSagaInstanceRepo(db *sql.DB) repo.SagaInstanceRepo {
-	return &sagaInstanceRepo{db}
+func NewSagaInstanceRepo(h SqlHandler) repo.SagaInstanceRepo {
+	return &sagaInstanceRepo{h}
 }
 
-func createSagaInstanceTX(ctx context.Context, tx *sql.Tx, i *models.SagaInstance) error {
-	query := `INSERT saga_instance SET id=?, saga_type=?, saga_data=?, current_state=?`
-	res, err := tx.ExecContext(ctx, query, i.ID, i.SagaType, i.SagaData, i.CurrentState)
+func (r *sagaInstanceRepo) CreateSagaInstance(ctx context.Context, i *models.SagaInstance) error {
+	query := `INSERT saga_instance SET id=?, saga_type=?, saga_data=?, current_state=?, updated_at=?, created_at=?`
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	res, err := stmt.ExecContext(ctx, i.ID, i.SagaType, i.SagaData, i.CurrentState, i.UpdatedAt, i.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -28,19 +34,36 @@ func createSagaInstanceTX(ctx context.Context, tx *sql.Tx, i *models.SagaInstanc
 		return err
 	}
 	if int(rowCnt) != 1 {
-		tx.Rollback()
 		return err
 	}
 	return nil
 }
 
-func (r *sagaInstanceRepo) UpdateSagaInstance(ctx context.Context, s *models.SagaInstance) error {
+func (r *sagaInstanceRepo) UpdateSagaInstance(ctx context.Context, i *models.SagaInstance) error {
+	query := `UPDATE saga_instance SET saga_data=?, current_state=?, updated_at=? WHERE id=?`
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	res, err := stmt.ExecContext(ctx, i.SagaData, i.CurrentState, i.ID, i.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	rowCnt, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if int(rowCnt) != 1 {
+		return err
+	}
 	return nil
 }
 
 func (r *sagaInstanceRepo) GetSagaInstance(ctx context.Context, sagaID string) (*models.SagaInstance, error) {
-	query := `SELECT id, saga_type, saga_data, current_state FROM saga_instance WHERE id=?`
-	stmt, err := r.db.PrepareContext(ctx, query)
+	query := `SELECT id, saga_type, saga_data, current_state, updated_at, created_at FROM saga_instance WHERE id=?`
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +71,7 @@ func (r *sagaInstanceRepo) GetSagaInstance(ctx context.Context, sagaID string) (
 
 	i := &models.SagaInstance{}
 
-	err = stmt.QueryRowContext(ctx, sagaID).Scan(&i.ID, &i.SagaType, &i.SagaData, &i.CurrentState)
+	err = stmt.QueryRowContext(ctx, sagaID).Scan(&i.ID, &i.SagaType, &i.SagaData, &i.CurrentState, &i.UpdatedAt, &i.CreatedAt)
 	switch {
 	case err == sql.ErrNoRows:
 		return nil, fmt.Errorf("no saga_instance with id %s", sagaID)

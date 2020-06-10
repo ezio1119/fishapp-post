@@ -7,5 +7,5 @@ import (
 )
 
 type OutboxRepo interface {
-	CreateOutbox(ctx context.Context, o *models.Outbox, i *models.SagaInstance) error
+	CreateOutbox(ctx context.Context, o *models.Outbox) error
 }

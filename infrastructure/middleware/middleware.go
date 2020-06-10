@@ -5,9 +5,13 @@ import (
 )
 
 type Middleware interface {
-	LoggerInterceptor() grpc.UnaryServerInterceptor
-	RecoveryInterceptor() grpc.UnaryServerInterceptor
-	ValidatorInterceptor() grpc.UnaryServerInterceptor
+	UnaryLogingInterceptor() grpc.UnaryServerInterceptor
+	UnaryRecoveryInterceptor() grpc.UnaryServerInterceptor
+	UnaryValidationInterceptor() grpc.UnaryServerInterceptor
+
+	StreamLogingInterceptor() grpc.StreamServerInterceptor
+	StreamRecoveryInterceptor() grpc.StreamServerInterceptor
+	StreamValidationInterceptor() grpc.StreamServerInterceptor
 }
 
 type middleware struct{}

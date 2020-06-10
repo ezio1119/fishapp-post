@@ -12,8 +12,11 @@ sv:
   timeout: 2
   port: 50051
   debug: true
-  defaultPageSize: 30
+  defaultPageSize: 10
 nats:
   url: "nats-streaming:4223"
-  clusterid: "fishapp-cluster"
-  clientid: "fishapp-relaylog"
+  clusterid: fishapp-cluster
+  queuegroup: fishapp-post
+gcs:
+  bucketname: fishapp
+  bucketurl : https://storage.cloud.google.com/fishapp/

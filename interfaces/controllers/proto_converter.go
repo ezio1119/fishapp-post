@@ -3,12 +3,12 @@ package controllers
 import (
 	"time"
 
-	"github.com/ezio1119/fishapp-post/interfaces/controllers/post_grpc"
 	"github.com/ezio1119/fishapp-post/models"
+	"github.com/ezio1119/fishapp-post/pb"
 	"github.com/golang/protobuf/ptypes"
 )
 
-func convPostProto(p *models.Post) (*post_grpc.Post, error) {
+func convPostProto(p *models.Post) (*pb.Post, error) {
 	cAt, err := ptypes.TimestampProto(p.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -21,12 +21,12 @@ func convPostProto(p *models.Post) (*post_grpc.Post, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &post_grpc.Post{
+	return &pb.Post{
 		Id:                p.ID,
 		Title:             p.Title,
 		Content:           p.Content,
 		FishingSpotTypeId: p.FishingSpotTypeID,
-		FishTypeIds:       p.FishTypeIDs,
+		FishTypeIds:       models.ConvPostsFishTypeIDs(p.PostsFishTypes),
 		PrefectureId:      p.PrefectureID,
 		MeetingPlaceId:    p.MeetingPlaceID,
 		MeetingAt:         mAt,
@@ -38,8 +38,8 @@ func convPostProto(p *models.Post) (*post_grpc.Post, error) {
 
 }
 
-func convListPostsProto(list []*models.Post) ([]*post_grpc.Post, error) {
-	listP := make([]*post_grpc.Post, len(list))
+func convListPostsProto(list []*models.Post) ([]*pb.Post, error) {
+	listP := make([]*pb.Post, len(list))
 	for i, p := range list {
 		pProto, err := convPostProto(p)
 		if err != nil {
@@ -50,7 +50,7 @@ func convListPostsProto(list []*models.Post) ([]*post_grpc.Post, error) {
 	return listP, nil
 }
 
-func convApplyPostProto(a *models.ApplyPost) (*post_grpc.ApplyPost, error) {
+func convApplyPostProto(a *models.ApplyPost) (*pb.ApplyPost, error) {
 	cAt, err := ptypes.TimestampProto(a.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func convApplyPostProto(a *models.ApplyPost) (*post_grpc.ApplyPost, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &post_grpc.ApplyPost{
+	return &pb.ApplyPost{
 		Id:        a.ID,
 		PostId:    a.PostID,
 		UserId:    a.UserID,
@@ -68,8 +68,8 @@ func convApplyPostProto(a *models.ApplyPost) (*post_grpc.ApplyPost, error) {
 	}, nil
 }
 
-func convListApplyPostsProto(list []*models.ApplyPost) ([]*post_grpc.ApplyPost, error) {
-	listA := make([]*post_grpc.ApplyPost, len(list))
+func convListApplyPostsProto(list []*models.ApplyPost) ([]*pb.ApplyPost, error) {
+	listA := make([]*pb.ApplyPost, len(list))
 	for i, a := range list {
 		aP, err := convApplyPostProto(a)
 		if err != nil {
@@ -80,7 +80,7 @@ func convListApplyPostsProto(list []*models.ApplyPost) ([]*post_grpc.ApplyPost, 
 	return listA, nil
 }
 
-func convPostFilter(f *post_grpc.ListPostsReq_Filter) (*models.PostFilter, error) {
+func convPostFilter(f *pb.ListPostsReq_Filter) (*models.PostFilter, error) {
 	postF := &models.PostFilter{CanApply: f.CanApply, FishTypeIDs: f.FishTypeIds}
 
 	if f.MeetingAtFrom != nil {
@@ -100,15 +100,15 @@ func convPostFilter(f *post_grpc.ListPostsReq_Filter) (*models.PostFilter, error
 	}
 
 	switch f.OrderBy {
-	case post_grpc.ListPostsReq_Filter_ASC:
+	case pb.ListPostsReq_Filter_ASC:
 		postF.OrderBy = models.OrderByAsc
-	case post_grpc.ListPostsReq_Filter_DESC:
+	case pb.ListPostsReq_Filter_DESC:
 		postF.OrderBy = models.OrderByDesc
 	}
 	switch f.SortBy {
-	case post_grpc.ListPostsReq_Filter_CREATED_AT:
+	case pb.ListPostsReq_Filter_CREATED_AT:
 		postF.SortBy = models.SortByID
-	case post_grpc.ListPostsReq_Filter_MEETING_AT:
+	case pb.ListPostsReq_Filter_MEETING_AT:
 		postF.SortBy = models.SortByMeetingAt
 	}
 	return postF, nil

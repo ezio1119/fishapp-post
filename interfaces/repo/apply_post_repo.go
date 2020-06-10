@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -15,15 +14,21 @@ import (
 )
 
 type applyPostRepo struct {
-	db *sql.DB
+	SqlHandler
 }
 
-func NewApplyPostRepo(db *sql.DB) repo.ApplyPostRepo {
-	return &applyPostRepo{db}
+func NewApplyPostRepo(h SqlHandler) repo.ApplyPostRepo {
+	return &applyPostRepo{h}
 }
 
 func (r *applyPostRepo) fetchApplyPosts(ctx context.Context, query string, args ...interface{}) ([]*models.ApplyPost, error) {
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,9 +103,16 @@ func (r *applyPostRepo) BatchGetApplyPostsByPostIDs(ctx context.Context, pIDs []
 func (r *applyPostRepo) CountApplyPostsByPostID(ctx context.Context, postID int64) (int64, error) {
 	query := `SELECT COUNT(*)
                      FROM apply_posts
-                     WHERE post_id = ?`
+										 WHERE post_id = ?`
+
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
 	var cnt int64
-	rows, err := r.db.QueryContext(ctx, query, postID)
+	rows, err := stmt.QueryContext(ctx, postID)
 	if err != nil {
 		return 0, err
 	}
@@ -119,10 +131,12 @@ func (r *applyPostRepo) CountApplyPostsByPostID(ctx context.Context, postID int6
 
 func (r *applyPostRepo) CreateApplyPost(ctx context.Context, p *models.ApplyPost) error {
 	query := `INSERT apply_posts SET post_id=?, user_id=?, updated_at=?, created_at=?`
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+
 	res, err := stmt.ExecContext(ctx, p.PostID, p.UserID, p.UpdatedAt, p.CreatedAt)
 	if err != nil {
 		e, ok := err.(*mysql.MySQLError)
@@ -151,10 +165,12 @@ func (r *applyPostRepo) CreateApplyPost(ctx context.Context, p *models.ApplyPost
 func (r *applyPostRepo) DeleteApplyPost(ctx context.Context, id int64) error {
 	query := `DELETE FROM apply_posts WHERE id = ?`
 
-	stmt, err := r.db.PrepareContext(ctx, query)
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+
 	res, err := stmt.ExecContext(ctx, id)
 	if err != nil {
 		return err

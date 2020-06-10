@@ -5,6 +5,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (*middleware) ValidatorInterceptor() grpc.UnaryServerInterceptor {
+func (*middleware) UnaryValidationInterceptor() grpc.UnaryServerInterceptor {
 	return grpc_validator.UnaryServerInterceptor()
+}
+
+func (*middleware) StreamValidationInterceptor() grpc.StreamServerInterceptor {
+	return grpc_validator.StreamServerInterceptor()
 }

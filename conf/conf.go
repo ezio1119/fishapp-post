@@ -29,9 +29,13 @@ type config struct {
 		DefaultPageSize int64
 	}
 	Nats struct {
-		URL       string
-		ClusterID string
-		ClientID  string
+		URL        string
+		ClusterID  string
+		QueueGroup string
+	}
+	Gcs struct {
+		BucketName string
+		BucketURL  string
 	}
 }
 
@@ -41,7 +45,7 @@ func init() {
 
 	viper.SetConfigName("conf")
 	viper.SetConfigType("yml")
-	viper.AddConfigPath("conf")
+	viper.AddConfigPath("/app/conf")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 

@@ -2,10 +2,10 @@ package models
 
 import "time"
 
-type ApplyPost struct {
+type Image struct {
 	ID        int64
-	UserID    int64
-	PostID    int64
+	URL       string
+	PostID    string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

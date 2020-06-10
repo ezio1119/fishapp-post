@@ -9,14 +9,15 @@ type Post struct {
 	Title             string
 	Content           string
 	FishingSpotTypeID int64
-	FishTypeIDs       []int64
+	PostsFishTypes    []*PostsFishType
 	PrefectureID      int64
 	MeetingPlaceID    string
 	MeetingAt         time.Time
 	MaxApply          int64
 	UserID            int64
-	UpdatedAt         time.Time
+	Images            []*Image
 	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type orderBy int64

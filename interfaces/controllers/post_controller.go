@@ -1,10 +1,14 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"runtime"
 
-	"github.com/ezio1119/fishapp-post/interfaces/controllers/post_grpc"
 	"github.com/ezio1119/fishapp-post/models"
+	"github.com/ezio1119/fishapp-post/pb"
 	"github.com/ezio1119/fishapp-post/usecase/interactor"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -20,7 +24,7 @@ func NewPostController(pu interactor.PostInteractor) *postController {
 	return &postController{pu}
 }
 
-func (c *postController) GetPost(ctx context.Context, in *post_grpc.GetPostReq) (*post_grpc.Post, error) {
+func (c *postController) GetPost(ctx context.Context, in *pb.GetPostReq) (*pb.Post, error) {
 	p, err := c.postInteractor.GetPost(ctx, in.Id)
 	if err != nil {
 		return nil, err
@@ -28,7 +32,7 @@ func (c *postController) GetPost(ctx context.Context, in *post_grpc.GetPostReq) 
 	return convPostProto(p)
 }
 
-func (c *postController) ListPosts(ctx context.Context, in *post_grpc.ListPostsReq) (*post_grpc.ListPostsRes, error) {
+func (c *postController) ListPosts(ctx context.Context, in *pb.ListPostsReq) (*pb.ListPostsRes, error) {
 	f, err := convPostFilter(in.Filter)
 	if err != nil {
 		return nil, err
@@ -46,40 +50,83 @@ func (c *postController) ListPosts(ctx context.Context, in *post_grpc.ListPostsR
 		return nil, err
 	}
 
-	return &post_grpc.ListPostsRes{Posts: listProto, NextPageToken: nextToken}, nil
+	return &pb.ListPostsRes{Posts: listProto, NextPageToken: nextToken}, nil
 }
 
-func (c *postController) CreatePost(ctx context.Context, in *post_grpc.CreatePostReq) (*post_grpc.CreatePostRes, error) {
+func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) error {
+
+	ctx := stream.Context()
+	in := &pb.CreatePostReqInfo{}
+
+	imageBufs := map[int64]*bytes.Buffer{}
+
+	for {
+		fmt.Println(runtime.NumGoroutine())
+		req, err := stream.Recv()
+
+		if err == io.EOF {
+			goto END
+		}
+		if err != nil {
+			return err
+		}
+
+		switch x := req.Data.(type) {
+		case *pb.CreatePostReq_Info:
+			*in = *x.Info
+		case *pb.CreatePostReq_ImageChunk:
+
+			chunkData := x.ImageChunk.ChunkData
+			chunkNum := x.ImageChunk.ChunkNum
+
+			if imageBufs[chunkNum] == nil {
+				imageBufs[chunkNum] = &bytes.Buffer{}
+			}
+
+			if _, err := imageBufs[chunkNum].Write(chunkData); err != nil {
+				return err
+			}
+
+		default:
+			return fmt.Errorf("CreatePostReq.Request has unexpected type %T", x)
+		}
+	}
+
+END:
+
 	mAt, err := ptypes.Timestamp(in.MeetingAt)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	p := &models.Post{
 		Title:             in.Title,
 		Content:           in.Content,
 		FishingSpotTypeID: in.FishingSpotTypeId,
-		FishTypeIDs:       in.FishTypeIds,
+		PostsFishTypes:    models.ConvPostsFishTypes(in.FishTypeIds),
 		PrefectureID:      in.PrefectureId,
 		MeetingPlaceID:    in.MeetingPlaceId,
 		MeetingAt:         mAt,
 		MaxApply:          in.MaxApply,
 		UserID:            in.UserId,
 	}
-	sagaID, err := c.postInteractor.CreatePost(ctx, p)
+
+	sagaID, err := c.postInteractor.CreatePost(ctx, p, imageBufs)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	pProto, err := convPostProto(p)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &post_grpc.CreatePostRes{
+
+	return stream.SendAndClose(&pb.CreatePostRes{
 		Post:   pProto,
 		SagaId: sagaID,
-	}, nil
+	})
 }
 
-func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePostReq) (*post_grpc.Post, error) {
+func (c *postController) UpdatePost(ctx context.Context, in *pb.UpdatePostReq) (*pb.Post, error) {
 	mAt, err := ptypes.Timestamp(in.MeetingAt)
 	if err != nil {
 		return nil, err
@@ -89,7 +136,7 @@ func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePos
 		Title:             in.Title,
 		Content:           in.Content,
 		FishingSpotTypeID: in.FishingSpotTypeId,
-		FishTypeIDs:       in.FishTypeIds,
+		PostsFishTypes:    models.ConvPostsFishTypes(in.FishTypeIds),
 		PrefectureID:      in.PrefectureId,
 		MeetingPlaceID:    in.MeetingPlaceId,
 		MeetingAt:         mAt,
@@ -101,14 +148,14 @@ func (c *postController) UpdatePost(ctx context.Context, in *post_grpc.UpdatePos
 	return convPostProto(p)
 }
 
-func (c *postController) DeletePost(ctx context.Context, in *post_grpc.DeletePostReq) (*empty.Empty, error) {
+func (c *postController) DeletePost(ctx context.Context, in *pb.DeletePostReq) (*empty.Empty, error) {
 	if err := c.postInteractor.DeletePost(ctx, in.Id); err != nil {
 		return nil, err
 	}
 	return &empty.Empty{}, nil
 }
 
-func (c *postController) GetApplyPost(ctx context.Context, in *post_grpc.GetApplyPostReq) (*post_grpc.ApplyPost, error) {
+func (c *postController) GetApplyPost(ctx context.Context, in *pb.GetApplyPostReq) (*pb.ApplyPost, error) {
 	a, err := c.postInteractor.GetApplyPost(ctx, in.Id)
 	if err != nil {
 		return nil, err
@@ -116,7 +163,7 @@ func (c *postController) GetApplyPost(ctx context.Context, in *post_grpc.GetAppl
 	return convApplyPostProto(a)
 }
 
-func (c *postController) ListApplyPosts(ctx context.Context, in *post_grpc.ListApplyPostsReq) (*post_grpc.ListApplyPostsRes, error) {
+func (c *postController) ListApplyPosts(ctx context.Context, in *pb.ListApplyPostsReq) (*pb.ListApplyPostsRes, error) {
 	if (in.Filter.UserId == 0 && in.Filter.PostId == 0) || (in.Filter.UserId != 0 && in.Filter.PostId != 0) {
 		return nil, status.Error(codes.InvalidArgument, "invalid ListApplyPostsReq.Filter.PostId, ListApplyPostsReq.Filter.UserId: value must be set either user_id or post_id")
 	}
@@ -131,10 +178,10 @@ func (c *postController) ListApplyPosts(ctx context.Context, in *post_grpc.ListA
 	if err != nil {
 		return nil, err
 	}
-	return &post_grpc.ListApplyPostsRes{ApplyPosts: listProto}, nil
+	return &pb.ListApplyPostsRes{ApplyPosts: listProto}, nil
 }
 
-func (c *postController) BatchGetApplyPostsByPostIDs(ctx context.Context, in *post_grpc.BatchGetApplyPostsByPostIDsReq) (*post_grpc.BatchGetApplyPostsByPostIDsRes, error) {
+func (c *postController) BatchGetApplyPostsByPostIDs(ctx context.Context, in *pb.BatchGetApplyPostsByPostIDsReq) (*pb.BatchGetApplyPostsByPostIDsRes, error) {
 	list, err := c.postInteractor.BatchGetApplyPostsByPostIDs(ctx, in.PostIds)
 	if err != nil {
 		return nil, err
@@ -143,10 +190,10 @@ func (c *postController) BatchGetApplyPostsByPostIDs(ctx context.Context, in *po
 	if err != nil {
 		return nil, err
 	}
-	return &post_grpc.BatchGetApplyPostsByPostIDsRes{ApplyPosts: listProto}, nil
+	return &pb.BatchGetApplyPostsByPostIDsRes{ApplyPosts: listProto}, nil
 }
 
-func (c *postController) CreateApplyPost(ctx context.Context, in *post_grpc.CreateApplyPostReq) (*post_grpc.ApplyPost, error) {
+func (c *postController) CreateApplyPost(ctx context.Context, in *pb.CreateApplyPostReq) (*pb.ApplyPost, error) {
 	a := &models.ApplyPost{
 		PostID: in.PostId,
 		UserID: in.UserId,
@@ -158,7 +205,7 @@ func (c *postController) CreateApplyPost(ctx context.Context, in *post_grpc.Crea
 	return convApplyPostProto(a)
 }
 
-func (c *postController) DeleteApplyPost(ctx context.Context, in *post_grpc.DeleteApplyPostReq) (*empty.Empty, error) {
+func (c *postController) DeleteApplyPost(ctx context.Context, in *pb.DeleteApplyPostReq) (*empty.Empty, error) {
 	if err := c.postInteractor.DeleteApplyPost(ctx, in.Id); err != nil {
 		return nil, err
 	}
