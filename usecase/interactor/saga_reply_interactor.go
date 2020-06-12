@@ -38,6 +38,9 @@ func (i *sagaReplyInteractor) RoomCreated(ctx context.Context, sagaID string) er
 	s := i.createPostSagaManager.NewCreatePostSagaManager(state)
 
 	if err := s.FSM.Event("ApprovePost", ctx); err != nil {
+		if err := s.FSM.Event("RejectPost", ctx); err != nil {
+			return err
+		}
 		return err
 	}
 	return nil

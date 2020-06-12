@@ -66,6 +66,43 @@ func (r *postRepo) fetchPosts(ctx context.Context, query string, args ...interfa
 	return result, nil
 }
 
+func (r *postRepo) fetchImages(ctx context.Context, query string, args ...interface{}) ([]*models.Image, error) {
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
+	result := make([]*models.Image, 0)
+	for rows.Next() {
+		f := new(models.Image)
+		if err := rows.Scan(
+			&f.ID,
+			&f.Name,
+			&f.PostID,
+			&f.UpdatedAt,
+			&f.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, f)
+	}
+
+	return result, nil
+}
+
 func (r *postRepo) fetchPostsFishTypes(ctx context.Context, query string, args ...interface{}) ([]*models.PostsFishType, error) {
 	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
@@ -142,9 +179,29 @@ func (r *postRepo) fillListPostsWithFishTypes(ctx context.Context, posts []*mode
 	return nil
 }
 
-func (r *postRepo) BatchCreatePostsFishTypes(ctx context.Context, p *models.Post) error {
+func (r *postRepo) fillPostWithImages(ctx context.Context, p *models.Post) error {
+	query := `SELECT id, name, post_id, updated_at, created_at
+						FROM images
+						WHERE post_id = ?`
+
+	images, err := r.fetchImages(ctx, query, p.ID)
+	if err != nil {
+		return err
+	}
+	for _, i := range images {
+		p.Images = append(p.Images, i)
+	}
+
+	return nil
+}
+
+func (r *postRepo) batchCreatePostsFishTypes(ctx context.Context, p *models.Post) error {
 	query := `INSERT INTO posts_fish_types(post_id, fish_type_id, created_at, updated_at)
 						VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.PostsFishTypes)-1)
+
+	for _, f := range p.PostsFishTypes {
+		f.PostID = p.ID
+	}
 
 	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
@@ -152,12 +209,9 @@ func (r *postRepo) BatchCreatePostsFishTypes(ctx context.Context, p *models.Post
 	}
 	defer stmt.Close()
 
-	args := make([]interface{}, len(p.PostsFishTypes)*4)
-	for i, fType := range p.PostsFishTypes {
-		args[i*4] = p.ID
-		args[i*4+1] = fType.FishTypeID
-		args[i*4+2] = p.UpdatedAt
-		args[i*4+3] = p.UpdatedAt
+	args := []interface{}{}
+	for _, f := range p.PostsFishTypes {
+		args = append(args, f.PostID, f.FishTypeID, f.CreatedAt, f.UpdatedAt)
 	}
 
 	res, err := stmt.ExecContext(ctx, args...)
@@ -172,11 +226,34 @@ func (r *postRepo) BatchCreatePostsFishTypes(ctx context.Context, p *models.Post
 		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.PostsFishTypes), rowCnt)
 	}
 
+	lastID, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	for i, f := range p.PostsFishTypes {
+		f.ID = lastID - int64(len(p.PostsFishTypes)) + int64(i) + 2
+	}
+
 	return nil
 }
 
-func (r *postRepo) DeletePostsFishTypesByPostID(ctx context.Context, pID int64) error {
+func (r *postRepo) deletePostsFishTypesByPostID(ctx context.Context, pID int64) error {
 	query := "DELETE FROM posts_fish_types WHERE post_id = ?"
+	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err = stmt.ExecContext(ctx, pID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *postRepo) deleteImagesByPostID(ctx context.Context, pID int64) error {
+	query := "DELETE FROM images WHERE post_id = ?"
 	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
 		return err
@@ -190,6 +267,7 @@ func (r *postRepo) DeletePostsFishTypesByPostID(ctx context.Context, pID int64) 
 	if _, err := res.RowsAffected(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -218,6 +296,16 @@ func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
 	}
 	p.ID = lastID
 
+	if err := r.batchCreatePostsFishTypes(ctx, p); err != nil {
+		return err
+	}
+
+	if len(p.Images) != 0 {
+		if err := r.batchCreateImages(ctx, p); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -230,12 +318,19 @@ func (r *postRepo) GetPostByID(ctx context.Context, id int64) (*models.Post, err
 	if err != nil {
 		return nil, err
 	}
+
 	if len(list) == 0 {
 		return nil, status.Errorf(codes.NotFound, "post with id='%d' is not found", id)
 	}
+
 	if err := r.fillPostWithFishTypeIDs(ctx, list[0]); err != nil {
 		return nil, err
 	}
+
+	if err := r.fillPostWithImages(ctx, list[0]); err != nil {
+		return nil, err
+	}
+
 	return list[0], nil
 }
 
@@ -328,12 +423,30 @@ func (r *postRepo) UpdatePost(ctx context.Context, p *models.Post) error {
 	if err != nil {
 		return err
 	}
+
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
+
 	if rowCnt != 1 {
 		return fmt.Errorf("expected %d row affected, got %d rows affected", 1, rowCnt)
+	}
+
+	if err := r.deletePostsFishTypesByPostID(ctx, p.ID); err != nil {
+		return err
+	}
+
+	if err := r.batchCreatePostsFishTypes(ctx, p); err != nil {
+		return err
+	}
+
+	if err := r.deleteImagesByPostID(ctx, p.ID); err != nil {
+		return err
+	}
+
+	if err := r.batchCreateImages(ctx, p); err != nil {
+		return err
 	}
 
 	return nil
@@ -362,9 +475,13 @@ func (r *postRepo) DeletePost(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *postRepo) BatchCreateImage(ctx context.Context, p *models.Post) error {
-	query := `INSERT INTO images(url, post_id, updated_at, created_at)
+func (r *postRepo) batchCreateImages(ctx context.Context, p *models.Post) error {
+	query := `INSERT INTO images(name, post_id, updated_at, created_at)
 						VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.Images)-1)
+
+	for _, image := range p.Images {
+		image.PostID = p.ID
+	}
 
 	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
@@ -373,14 +490,14 @@ func (r *postRepo) BatchCreateImage(ctx context.Context, p *models.Post) error {
 
 	args := []interface{}{}
 	for _, img := range p.Images {
-		args = append(args, img.URL, p.ID, img.UpdatedAt, img.CreatedAt)
+		args = append(args, img.Name, img.PostID, img.UpdatedAt, img.CreatedAt)
 	}
 
 	res, err := stmt.ExecContext(ctx, args...)
 	if err != nil {
-
 		return err
 	}
+
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
 		return err
@@ -389,6 +506,14 @@ func (r *postRepo) BatchCreateImage(ctx context.Context, p *models.Post) error {
 		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.Images), rowCnt)
 	}
 
+	lastID, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	for i, img := range p.Images {
+		img.ID = lastID - int64(len(p.Images)) + int64(i) + 2
+	}
 	return nil
 
 }

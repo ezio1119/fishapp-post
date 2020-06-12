@@ -69,6 +69,21 @@ func (m *Post) Validate() error {
 
 	// no validation rules for MaxApply
 
+	for idx, item := range m.GetImages() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return PostValidationError{
+					field:  fmt.Sprintf("Images[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
 	if v, ok := interface{}(m.GetCreatedAt()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return PostValidationError{
@@ -235,6 +250,164 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ApplyPostValidationError{}
+
+// Validate checks the field values on Image with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *Image) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Id
+
+	// no validation rules for Name
+
+	// no validation rules for PostId
+
+	if v, ok := interface{}(m.GetCreatedAt()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ImageValidationError{
+				field:  "CreatedAt",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetUpdatedAt()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ImageValidationError{
+				field:  "UpdatedAt",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// ImageValidationError is the validation error returned by Image.Validate if
+// the designated constraints aren't met.
+type ImageValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ImageValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ImageValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ImageValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ImageValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ImageValidationError) ErrorName() string { return "ImageValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ImageValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sImage.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ImageValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ImageValidationError{}
+
+// Validate checks the field values on ImageChunk with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *ImageChunk) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for ChunkNum
+
+	// no validation rules for ChunkData
+
+	return nil
+}
+
+// ImageChunkValidationError is the validation error returned by
+// ImageChunk.Validate if the designated constraints aren't met.
+type ImageChunkValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ImageChunkValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ImageChunkValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ImageChunkValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ImageChunkValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ImageChunkValidationError) ErrorName() string { return "ImageChunkValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ImageChunkValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sImageChunk.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ImageChunkValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ImageChunkValidationError{}
 
 // Validate checks the field values on GetPostReq with the rules defined in the
 // proto definition for this message. If any rules are violated, an error is returned.
@@ -579,74 +752,6 @@ var _ interface {
 	ErrorName() string
 } = CreatePostReqValidationError{}
 
-// Validate checks the field values on ImageChunk with the rules defined in the
-// proto definition for this message. If any rules are violated, an error is returned.
-func (m *ImageChunk) Validate() error {
-	if m == nil {
-		return nil
-	}
-
-	// no validation rules for ChunkNum
-
-	// no validation rules for ChunkData
-
-	return nil
-}
-
-// ImageChunkValidationError is the validation error returned by
-// ImageChunk.Validate if the designated constraints aren't met.
-type ImageChunkValidationError struct {
-	field  string
-	reason string
-	cause  error
-	key    bool
-}
-
-// Field function returns field value.
-func (e ImageChunkValidationError) Field() string { return e.field }
-
-// Reason function returns reason value.
-func (e ImageChunkValidationError) Reason() string { return e.reason }
-
-// Cause function returns cause value.
-func (e ImageChunkValidationError) Cause() error { return e.cause }
-
-// Key function returns key value.
-func (e ImageChunkValidationError) Key() bool { return e.key }
-
-// ErrorName returns error name.
-func (e ImageChunkValidationError) ErrorName() string { return "ImageChunkValidationError" }
-
-// Error satisfies the builtin error interface
-func (e ImageChunkValidationError) Error() string {
-	cause := ""
-	if e.cause != nil {
-		cause = fmt.Sprintf(" | caused by: %v", e.cause)
-	}
-
-	key := ""
-	if e.key {
-		key = "key for "
-	}
-
-	return fmt.Sprintf(
-		"invalid %sImageChunk.%s: %s%s",
-		key,
-		e.field,
-		e.reason,
-		cause)
-}
-
-var _ error = ImageChunkValidationError{}
-
-var _ interface {
-	Field() string
-	Reason() string
-	Key() bool
-	Cause() error
-	ErrorName() string
-} = ImageChunkValidationError{}
-
 // Validate checks the field values on CreatePostReqInfo with the rules defined
 // in the proto definition for this message. If any rules are violated, an
 // error is returned.
@@ -891,65 +996,65 @@ var _ interface {
 	ErrorName() string
 } = CreatePostResValidationError{}
 
-// Validate checks the field values on UpdatePostReq with the rules defined in
-// the proto definition for this message. If any rules are violated, an error
-// is returned.
-func (m *UpdatePostReq) Validate() error {
+// Validate checks the field values on UpdatePostReqInfo with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *UpdatePostReqInfo) Validate() error {
 	if m == nil {
 		return nil
 	}
 
 	if m.GetId() < 1 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "Id",
 			reason: "value must be greater than or equal to 1",
 		}
 	}
 
 	if l := utf8.RuneCountInString(m.GetTitle()); l < 1 || l > 20 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "Title",
 			reason: "value length must be between 1 and 20 runes, inclusive",
 		}
 	}
 
 	if l := utf8.RuneCountInString(m.GetContent()); l < 1 || l > 2000 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "Content",
 			reason: "value length must be between 1 and 2000 runes, inclusive",
 		}
 	}
 
 	if val := m.GetFishingSpotTypeId(); val < 1 || val > 4 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "FishingSpotTypeId",
 			reason: "value must be inside range [1, 4]",
 		}
 	}
 
 	if len(m.GetFishTypeIds()) < 1 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "FishTypeIds",
 			reason: "value must contain at least 1 item(s)",
 		}
 	}
 
-	_UpdatePostReq_FishTypeIds_Unique := make(map[int64]struct{}, len(m.GetFishTypeIds()))
+	_UpdatePostReqInfo_FishTypeIds_Unique := make(map[int64]struct{}, len(m.GetFishTypeIds()))
 
 	for idx, item := range m.GetFishTypeIds() {
 		_, _ = idx, item
 
-		if _, exists := _UpdatePostReq_FishTypeIds_Unique[item]; exists {
-			return UpdatePostReqValidationError{
+		if _, exists := _UpdatePostReqInfo_FishTypeIds_Unique[item]; exists {
+			return UpdatePostReqInfoValidationError{
 				field:  fmt.Sprintf("FishTypeIds[%v]", idx),
 				reason: "repeated value must contain unique items",
 			}
 		} else {
-			_UpdatePostReq_FishTypeIds_Unique[item] = struct{}{}
+			_UpdatePostReqInfo_FishTypeIds_Unique[item] = struct{}{}
 		}
 
 		if val := item; val < 1 || val > 95 {
-			return UpdatePostReqValidationError{
+			return UpdatePostReqInfoValidationError{
 				field:  fmt.Sprintf("FishTypeIds[%v]", idx),
 				reason: "value must be inside range [1, 95]",
 			}
@@ -958,14 +1063,14 @@ func (m *UpdatePostReq) Validate() error {
 	}
 
 	if val := m.GetPrefectureId(); val < 1 || val > 47 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "PrefectureId",
 			reason: "value must be inside range [1, 47]",
 		}
 	}
 
 	if l := utf8.RuneCountInString(m.GetMeetingPlaceId()); l < 27 || l > 255 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "MeetingPlaceId",
 			reason: "value length must be between 27 and 255 runes, inclusive",
 		}
@@ -974,7 +1079,7 @@ func (m *UpdatePostReq) Validate() error {
 	if t := m.GetMeetingAt(); t != nil {
 		ts, err := ptypes.Timestamp(t)
 		if err != nil {
-			return UpdatePostReqValidationError{
+			return UpdatePostReqInfoValidationError{
 				field:  "MeetingAt",
 				reason: "value is not a valid timestamp",
 				cause:  err,
@@ -984,7 +1089,7 @@ func (m *UpdatePostReq) Validate() error {
 		now := time.Now()
 
 		if ts.Sub(now) <= 0 {
-			return UpdatePostReqValidationError{
+			return UpdatePostReqInfoValidationError{
 				field:  "MeetingAt",
 				reason: "value must be greater than now",
 			}
@@ -993,10 +1098,111 @@ func (m *UpdatePostReq) Validate() error {
 	}
 
 	if m.GetMaxApply() < 1 {
-		return UpdatePostReqValidationError{
+		return UpdatePostReqInfoValidationError{
 			field:  "MaxApply",
 			reason: "value must be greater than or equal to 1",
 		}
+	}
+
+	return nil
+}
+
+// UpdatePostReqInfoValidationError is the validation error returned by
+// UpdatePostReqInfo.Validate if the designated constraints aren't met.
+type UpdatePostReqInfoValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdatePostReqInfoValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdatePostReqInfoValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdatePostReqInfoValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdatePostReqInfoValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdatePostReqInfoValidationError) ErrorName() string {
+	return "UpdatePostReqInfoValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpdatePostReqInfoValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdatePostReqInfo.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdatePostReqInfoValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdatePostReqInfoValidationError{}
+
+// Validate checks the field values on UpdatePostReq with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *UpdatePostReq) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	switch m.Data.(type) {
+
+	case *UpdatePostReq_Info:
+
+		if v, ok := interface{}(m.GetInfo()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return UpdatePostReqValidationError{
+					field:  "Info",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *UpdatePostReq_ImageChunk:
+
+		if v, ok := interface{}(m.GetImageChunk()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return UpdatePostReqValidationError{
+					field:  "ImageChunk",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	default:
+		return UpdatePostReqValidationError{
+			field:  "Data",
+			reason: "value is required",
+		}
+
 	}
 
 	return nil

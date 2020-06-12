@@ -10,6 +10,7 @@ import (
 	"github.com/ezio1119/fishapp-post/usecase/interactor/saga"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -18,7 +19,7 @@ type PostInteractor interface {
 	GetPost(ctx context.Context, id int64) (*models.Post, error)
 	ListPosts(ctx context.Context, p *models.Post, pageSize int64, pageToken string, filter *models.PostFilter) ([]*models.Post, string, error)
 	CreatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer) (string, error)
-	UpdatePost(ctx context.Context, p *models.Post) error
+	UpdatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer, deleteImageIDs []int64) error
 	DeletePost(ctx context.Context, id int64) error
 
 	GetApplyPost(ctx context.Context, id int64) (*models.ApplyPost, error)
@@ -46,6 +47,11 @@ func NewPostInteractor(
 	timeout time.Duration,
 ) PostInteractor {
 	return &postInteractor{pr, ir, ar, tr, sm, timeout}
+}
+
+func removeImage(images []*models.Image, i int) []*models.Image {
+	images[i] = images[len(images)-1]
+	return images[:len(images)-1]
 }
 
 func (i *postInteractor) GetPost(ctx context.Context, id int64) (*models.Post, error) {
@@ -96,26 +102,46 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 	p.CreatedAt = now
 	p.UpdatedAt = now
 
-	for _, buf := range imageBufs {
-		url, err := i.imageUploaderRepo.UploadImage(ctx, buf, uuid.New().String())
-		if err != nil {
-			return "", nil
-		}
-		p.Images = append(p.Images, &models.Image{
-			URL:       url,
-			CreatedAt: now,
-			UpdatedAt: now,
-		})
-	}
-
 	for _, f := range p.PostsFishTypes {
 		f.CreatedAt = now
 		f.UpdatedAt = now
 	}
 
+	if len(imageBufs) != 0 {
+		resizeChan := make(chan resizeChan)
+		eg := errgroup.Group{}
+
+		go func() {
+			eg.Wait()
+			close(resizeChan)
+		}()
+
+		for _, buf := range imageBufs {
+			buf := buf
+			eg.Go(func() error {
+				return resizeImage(buf, resizeChan, uuid.New().String())
+			})
+		}
+
+		for r := range resizeChan {
+			if err := i.imageUploaderRepo.UploadImage(ctx, r.io, r.name); err != nil {
+				return "", err
+			}
+			p.Images = append(p.Images, &models.Image{
+				Name:      r.name,
+				CreatedAt: now,
+				UpdatedAt: now,
+			})
+		}
+
+		if err := eg.Wait(); err != nil {
+			return "", err
+		}
+	}
+
 	ctx, err := i.transactionRepo.BeginTx(ctx)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	defer func() {
@@ -124,17 +150,8 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 		}
 	}()
 
+	// use tx inside
 	if err := i.postRepo.CreatePost(ctx, p); err != nil {
-		i.transactionRepo.Roolback(ctx)
-		return "", err
-	}
-
-	if err := i.postRepo.BatchCreatePostsFishTypes(ctx, p); err != nil {
-		i.transactionRepo.Roolback(ctx)
-		return "", err
-	}
-
-	if err := i.postRepo.BatchCreateImage(ctx, p); err != nil {
 		i.transactionRepo.Roolback(ctx)
 		return "", err
 	}
@@ -148,11 +165,7 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 	state := saga.NewCreatePostSagaState(p, "init", sagaID)
 
 	s := i.createPostSagaManager.NewCreatePostSagaManager(state)
-	// 同期
 
-	// if err := s.FSM.Event("UploadImage", ctx, image); err != nil {
-	// 	return "", err
-	// }
 	// 非同期
 	if err := s.FSM.Event("CreateRoom", ctx); err != nil {
 		return "", err
@@ -161,16 +174,72 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 	return sagaID, nil
 }
 
-func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post) error {
+func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer, deleteImageIDs []int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
 	now := time.Now()
+
+	oldP, err := i.postRepo.GetPostByID(ctx, p.ID)
+	if err != nil {
+		return err
+	}
+
+	for _, deleteID := range deleteImageIDs {
+		for index, existsImage := range p.Images {
+			if deleteID == existsImage.ID {
+				p.Images = removeImage(p.Images, index)
+				if err := i.imageUploaderRepo.DeleteUploadedImage(ctx, existsImage.Name); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if len(imageBufs) != 0 {
+		resizeChan := make(chan resizeChan)
+		eg := errgroup.Group{}
+
+		go func() {
+			eg.Wait()
+			close(resizeChan)
+		}()
+
+		for _, buf := range imageBufs {
+			buf := buf
+			eg.Go(func() error {
+				return resizeImage(buf, resizeChan, uuid.New().String())
+			})
+		}
+
+		for r := range resizeChan {
+			if err := i.imageUploaderRepo.UploadImage(ctx, r.io, r.name); err != nil {
+				return err
+			}
+			reqP.Images = append(reqP.Images, &models.Image{
+				Name:      r.name,
+				CreatedAt: now,
+				UpdatedAt: now,
+			})
+		}
+
+		if err := eg.Wait(); err != nil {
+			return err
+		}
+	}
+
+	p.Title = reqP.Title
+	p.Content = reqP.Content
+	p.FishingSpotTypeID = reqP.FishingSpotTypeID
+	p.PrefectureID = reqP.PrefectureID
+	p.MeetingPlaceID = reqP.MeetingPlaceID
+	p.MeetingAt = reqP.MeetingAt
+	p.MaxApply = reqP.MaxApply
 	p.UpdatedAt = now
 
-	ctx, err := i.transactionRepo.BeginTx(ctx)
+	ctx, err = i.transactionRepo.BeginTx(ctx)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	defer func() {
@@ -193,26 +262,11 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post) error {
 		return err
 	}
 
-	if err := i.postRepo.DeletePostsFishTypesByPostID(ctx, p.ID); err != nil {
-		i.transactionRepo.Roolback(ctx)
-		return err
-	}
-
-	if err := i.postRepo.BatchCreatePostsFishTypes(ctx, p); err != nil {
-		i.transactionRepo.Roolback(ctx)
-		return err
-	}
-
 	ctx, err = i.transactionRepo.Commit(ctx)
 	if err != nil {
 		return err
 	}
 
-	// 完全なデータで返すため
-	p, err = i.postRepo.GetPostByID(ctx, p.ID)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

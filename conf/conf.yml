@@ -9,14 +9,17 @@ db:
   parsetime: true
   allowNativePasswords: true
 sv:
-  timeout: 2
+  timeout: 10
   port: 50051
   debug: true
   defaultPageSize: 10
+  localimagespath: /app/images/
+  imageheight: 800
+  imagewidth: 600
+
 nats:
   url: "nats-streaming:4223"
   clusterid: fishapp-cluster
   queuegroup: fishapp-post
 gcs:
   bucketname: fishapp
-  bucketurl : https://storage.cloud.google.com/fishapp/

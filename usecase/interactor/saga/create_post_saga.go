@@ -109,12 +109,13 @@ func (m *CreatePostSagaManager) createRoom(e *fsm.Event) {
 	ctx, ok := e.Args[0].(context.Context)
 	if !ok {
 		e.Cancel(errors.New("missing context"))
+		return
 	}
-
 	// 遷移先のステートを入れる
 	sagaIn, err := m.createPostSagaState.convSagaInstance(e.Dst)
 	if err != nil {
 		e.Cancel(err)
+		return
 	}
 
 	eventData, err := protojson.Marshal(&pb.CreateRoom{
@@ -138,6 +139,7 @@ func (m *CreatePostSagaManager) createRoom(e *fsm.Event) {
 	ctx, err = m.transactionRepo.BeginTx(ctx)
 	if err != nil {
 		e.Cancel(err)
+		return
 	}
 
 	defer func() {
@@ -163,7 +165,7 @@ func (m *CreatePostSagaManager) createRoom(e *fsm.Event) {
 		e.Cancel(err)
 		return
 	}
-
+	// e.Cancel(errors.New("errorおきたよ"))
 	m.createPostSagaState.currentState = e.Dst
 }
 
@@ -171,10 +173,12 @@ func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
 	ctx, ok := e.Args[0].(context.Context)
 	if !ok {
 		e.Cancel(errors.New("missing context"))
+		return
 	}
 	jsonPost, err := json.Marshal(m.createPostSagaState.post)
 	if err != nil {
 		e.Cancel(err)
+		return
 	}
 
 	now := time.Now()
@@ -200,6 +204,7 @@ func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
 	ctx, err = m.transactionRepo.BeginTx(ctx)
 	if err != nil {
 		e.Cancel(err)
+		return
 	}
 
 	defer func() {
@@ -232,16 +237,24 @@ func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
 		return
 	}
 
+	for _, i := range m.createPostSagaState.post.Images {
+		if err := m.imageUploaderRepo.DeleteUploadedImage(ctx, i.Name); err != nil {
+			e.Cancel(err)
+			return
+		}
+	}
 }
 
 func (m *CreatePostSagaManager) approvePost(e *fsm.Event) {
 	ctx, ok := e.Args[0].(context.Context)
 	if !ok {
 		e.Cancel(errors.New("missing context"))
+		return
 	}
 	jsonPost, err := json.Marshal(m.createPostSagaState.post)
 	if err != nil {
 		e.Cancel(err)
+		return
 	}
 
 	now := time.Now()
@@ -265,6 +278,7 @@ func (m *CreatePostSagaManager) approvePost(e *fsm.Event) {
 	ctx, err = m.transactionRepo.BeginTx(ctx)
 	if err != nil {
 		e.Cancel(err)
+		return
 	}
 
 	defer func() {

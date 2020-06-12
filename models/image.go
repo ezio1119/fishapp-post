@@ -4,8 +4,8 @@ import "time"
 
 type Image struct {
 	ID        int64
-	URL       string
-	PostID    string
+	Name      string
+	PostID    int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

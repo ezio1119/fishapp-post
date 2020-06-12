@@ -47,7 +47,7 @@ func (r *sagaInstanceRepo) UpdateSagaInstance(ctx context.Context, i *models.Sag
 	}
 	defer stmt.Close()
 
-	res, err := stmt.ExecContext(ctx, i.SagaData, i.CurrentState, i.ID, i.UpdatedAt)
+	res, err := stmt.ExecContext(ctx, i.SagaData, i.CurrentState, i.UpdatedAt, i.ID)
 	if err != nil {
 		return err
 	}

@@ -12,9 +12,4 @@ type PostRepo interface {
 	UpdatePost(ctx context.Context, p *models.Post) error
 	CreatePost(ctx context.Context, p *models.Post) error
 	DeletePost(ctx context.Context, id int64) error
-
-	BatchCreatePostsFishTypes(ctx context.Context, p *models.Post) error
-	DeletePostsFishTypesByPostID(ctx context.Context, pID int64) error
-
-	BatchCreateImage(ctx context.Context, p *models.Post) error
 }

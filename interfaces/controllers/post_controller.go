@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"runtime"
 
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/pb"
@@ -61,7 +60,6 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 	imageBufs := map[int64]*bytes.Buffer{}
 
 	for {
-		fmt.Println(runtime.NumGoroutine())
 		req, err := stream.Recv()
 
 		if err == io.EOF {
@@ -126,11 +124,50 @@ END:
 	})
 }
 
-func (c *postController) UpdatePost(ctx context.Context, in *pb.UpdatePostReq) (*pb.Post, error) {
+func (c *postController) UpdatePost(stream pb.PostService_UpdatePostServer) error {
+	ctx := stream.Context()
+	in := &pb.UpdatePostReqInfo{}
+
+	imageBufs := map[int64]*bytes.Buffer{}
+
+	for {
+		req, err := stream.Recv()
+
+		if err == io.EOF {
+			goto END
+		}
+		if err != nil {
+			return err
+		}
+
+		switch x := req.Data.(type) {
+		case *pb.UpdatePostReq_Info:
+			*in = *x.Info
+		case *pb.UpdatePostReq_ImageChunk:
+
+			chunkData := x.ImageChunk.ChunkData
+			chunkNum := x.ImageChunk.ChunkNum
+
+			if imageBufs[chunkNum] == nil {
+				imageBufs[chunkNum] = &bytes.Buffer{}
+			}
+
+			if _, err := imageBufs[chunkNum].Write(chunkData); err != nil {
+				return err
+			}
+
+		default:
+			return fmt.Errorf("CreatePostReq.Request has unexpected type %T", x)
+		}
+	}
+
+END:
+
 	mAt, err := ptypes.Timestamp(in.MeetingAt)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
 	p := &models.Post{
 		ID:                in.Id,
 		Title:             in.Title,
@@ -142,10 +179,16 @@ func (c *postController) UpdatePost(ctx context.Context, in *pb.UpdatePostReq) (
 		MeetingAt:         mAt,
 		MaxApply:          in.MaxApply,
 	}
-	if err := c.postInteractor.UpdatePost(ctx, p); err != nil {
-		return nil, err
+	if err := c.postInteractor.UpdatePost(ctx, p, imageBufs, in.DeleteImageIds); err != nil {
+		return err
 	}
-	return convPostProto(p)
+
+	pProto, err := convPostProto(p)
+	if err != nil {
+		return err
+	}
+
+	return stream.SendAndClose(pProto)
 }
 
 func (c *postController) DeletePost(ctx context.Context, in *pb.DeletePostReq) (*empty.Empty, error) {

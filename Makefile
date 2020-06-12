@@ -51,7 +51,7 @@ exec:
 	$(DC) exec $(API) sh
 
 logs:
-	docker logs -f fishapp-post_post_1
+	docker logs -f --tail 100 fishapp-post_post_1
 
 dblogs:
-	$(DC) logs -f $(API)-db
+	$(DC) logs -f  $(API)-db

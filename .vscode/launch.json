@@ -8,7 +8,8 @@
       "name": "Launch",
       "type": "go",
       "request": "launch",
-      "mode": "auto",
+      "remotePath": "/app",
+      "mode": "remote",
       "program": "${workspaceFolder}",
       "env": {},
       "args": []

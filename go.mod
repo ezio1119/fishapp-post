@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/storage v1.0.0
 	github.com/Masterminds/squirrel v1.4.0
 	github.com/davecgh/go-spew v1.1.1
+	github.com/disintegration/imaging v1.6.2
 	github.com/envoyproxy/protoc-gen-validate v0.3.0
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-sql-driver/mysql v1.5.0
@@ -28,6 +29,7 @@ require (
 	go.uber.org/zap v1.15.0
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2 // indirect
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	golang.org/x/tools v0.0.0-20200522201501-cb1345f3a375 // indirect
 	google.golang.org/api v0.13.0

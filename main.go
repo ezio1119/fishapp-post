@@ -13,6 +13,7 @@ import (
 	"github.com/ezio1119/fishapp-post/interfaces/repo"
 	"github.com/ezio1119/fishapp-post/usecase/interactor"
 	"github.com/ezio1119/fishapp-post/usecase/interactor/saga"
+	repoI "github.com/ezio1119/fishapp-post/usecase/repo"
 )
 
 func main() {
@@ -29,11 +30,19 @@ func main() {
 	}
 	defer natsConn.Close()
 
-	gcsClient, err := infrastructure.NewGCSClient(ctx)
-	if err != nil {
-		panic(err)
+	var imageUploaderRepo repoI.ImageUploaderRepo
+	if conf.C.Sv.Debug {
+		imageUploaderRepo = repo.NewImageUploaderDevRepo()
+	} else {
+
+		gcsClient, err := infrastructure.NewGCSClient(ctx)
+		if err != nil {
+			panic(err)
+		}
+		defer gcsClient.Close()
+
+		imageUploaderRepo = repo.NewImageUploaderRepo(gcsClient)
 	}
-	defer gcsClient.Close()
 
 	ctxTimeout := time.Duration(conf.C.Sv.Timeout) * time.Second
 	sqlHandler := sqlhandler.NewSqlHandler(dbConn)
@@ -43,13 +52,13 @@ func main() {
 		repo.NewPostRepo(sqlHandler),
 		repo.NewSagaInstanceRepo(sqlHandler),
 		repo.NewTransactionRepo(sqlHandler),
-		repo.NewImageUploaderRepo(gcsClient),
+		imageUploaderRepo,
 	)
 
 	pController := controllers.NewPostController(
 		interactor.NewPostInteractor(
 			repo.NewPostRepo(sqlHandler),
-			repo.NewImageUploaderRepo(gcsClient),
+			imageUploaderRepo,
 			repo.NewApplyPostRepo(sqlHandler),
 			repo.NewTransactionRepo(sqlHandler),
 			createPostSagaManager,
