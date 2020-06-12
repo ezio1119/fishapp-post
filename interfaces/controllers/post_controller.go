@@ -179,7 +179,7 @@ END:
 		MeetingAt:         mAt,
 		MaxApply:          in.MaxApply,
 	}
-	if err := c.postInteractor.UpdatePost(ctx, p, imageBufs, in.DeleteImageIds); err != nil {
+	if err := c.postInteractor.UpdatePost(ctx, p, imageBufs, in.LeaveImageIds); err != nil {
 		return err
 	}
 

@@ -195,6 +195,30 @@ func (r *postRepo) fillPostWithImages(ctx context.Context, p *models.Post) error
 	return nil
 }
 
+func (r *postRepo) fillListPostsWithImages(ctx context.Context, posts []*models.Post) error {
+	query := `SELECT id, name, post_id, updated_at, created_at
+            FROM images
+            WHERE post_id IN(?` + strings.Repeat(",?", len(posts)-1) + ")"
+
+	args := make([]interface{}, len(posts))
+	for i, p := range posts {
+		args[i] = p.ID
+	}
+
+	images, err := r.fetchImages(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	for _, p := range posts {
+		for _, i := range images {
+			if p.ID == i.PostID {
+				p.Images = append(p.Images, i)
+			}
+		}
+	}
+	return nil
+}
+
 func (r *postRepo) batchCreatePostsFishTypes(ctx context.Context, p *models.Post) error {
 	query := `INSERT INTO posts_fish_types(post_id, fish_type_id, created_at, updated_at)
 						VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.PostsFishTypes)-1)
@@ -403,9 +427,15 @@ func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cur
 	if err != nil {
 		return nil, err
 	}
+
 	if err := r.fillListPostsWithFishTypes(ctx, posts); err != nil {
 		return nil, err
 	}
+
+	if err := r.fillListPostsWithImages(ctx, posts); err != nil {
+		return nil, err
+	}
+
 	return posts, nil
 }
 
@@ -478,6 +508,8 @@ func (r *postRepo) DeletePost(ctx context.Context, id int64) error {
 func (r *postRepo) batchCreateImages(ctx context.Context, p *models.Post) error {
 	query := `INSERT INTO images(name, post_id, updated_at, created_at)
 						VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.Images)-1)
+
+	fmt.Printf("image: %#v\n", p)
 
 	for _, image := range p.Images {
 		image.PostID = p.ID

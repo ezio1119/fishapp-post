@@ -174,7 +174,8 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 	return sagaID, nil
 }
 
-func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer, deleteImageIDs []int64) error {
+// imageBufsは新しいイメージ、existsImageIDsはアップロード済みの画像で、そのまま残すIDs
+func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer, leaveImageIDs []int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
@@ -185,14 +186,16 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBu
 		return err
 	}
 
-	for _, deleteID := range deleteImageIDs {
-		for index, existsImage := range p.Images {
-			if deleteID == existsImage.ID {
-				p.Images = removeImage(p.Images, index)
-				if err := i.imageUploaderRepo.DeleteUploadedImage(ctx, existsImage.Name); err != nil {
+	for _, leaveID := range leaveImageIDs {
+		for _, oldImage := range oldP.Images {
+			if leaveID != oldImage.ID {
+				if err := i.imageUploaderRepo.DeleteUploadedImage(ctx, oldImage.Name); err != nil {
 					return err
 				}
 			}
+			oldImage.CreatedAt = now
+			oldImage.UpdatedAt = now
+			p.Images = append(p.Images, oldImage)
 		}
 	}
 
@@ -216,7 +219,7 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBu
 			if err := i.imageUploaderRepo.UploadImage(ctx, r.io, r.name); err != nil {
 				return err
 			}
-			reqP.Images = append(reqP.Images, &models.Image{
+			p.Images = append(p.Images, &models.Image{
 				Name:      r.name,
 				CreatedAt: now,
 				UpdatedAt: now,
@@ -228,14 +231,14 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBu
 		}
 	}
 
-	p.Title = reqP.Title
-	p.Content = reqP.Content
-	p.FishingSpotTypeID = reqP.FishingSpotTypeID
-	p.PrefectureID = reqP.PrefectureID
-	p.MeetingPlaceID = reqP.MeetingPlaceID
-	p.MeetingAt = reqP.MeetingAt
-	p.MaxApply = reqP.MaxApply
-	p.UpdatedAt = now
+	// 完全なデータにする
+	p.UserID = oldP.UserID
+	p.CreatedAt = oldP.CreatedAt
+	p.UpdatedAt = oldP.UpdatedAt
+	for _, f := range p.PostsFishTypes {
+		f.CreatedAt = now
+		f.UpdatedAt = now
+	}
 
 	ctx, err = i.transactionRepo.BeginTx(ctx)
 	if err != nil {
