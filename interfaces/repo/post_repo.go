@@ -66,43 +66,6 @@ func (r *postRepo) fetchPosts(ctx context.Context, query string, args ...interfa
 	return result, nil
 }
 
-func (r *postRepo) fetchImages(ctx context.Context, query string, args ...interface{}) ([]*models.Image, error) {
-	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.QueryContext(ctx, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		err := rows.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}()
-
-	result := make([]*models.Image, 0)
-	for rows.Next() {
-		f := new(models.Image)
-		if err := rows.Scan(
-			&f.ID,
-			&f.Name,
-			&f.PostID,
-			&f.UpdatedAt,
-			&f.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		result = append(result, f)
-	}
-
-	return result, nil
-}
-
 func (r *postRepo) fetchPostsFishTypes(ctx context.Context, query string, args ...interface{}) ([]*models.PostsFishType, error) {
 	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
 	if err != nil {
@@ -173,46 +136,6 @@ func (r *postRepo) fillListPostsWithFishTypes(ctx context.Context, posts []*mode
 		for _, f := range fishes {
 			if p.ID == f.PostID {
 				p.PostsFishTypes = append(p.PostsFishTypes, f)
-			}
-		}
-	}
-	return nil
-}
-
-func (r *postRepo) fillPostWithImages(ctx context.Context, p *models.Post) error {
-	query := `SELECT id, name, post_id, updated_at, created_at
-						FROM images
-						WHERE post_id = ?`
-
-	images, err := r.fetchImages(ctx, query, p.ID)
-	if err != nil {
-		return err
-	}
-	for _, i := range images {
-		p.Images = append(p.Images, i)
-	}
-
-	return nil
-}
-
-func (r *postRepo) fillListPostsWithImages(ctx context.Context, posts []*models.Post) error {
-	query := `SELECT id, name, post_id, updated_at, created_at
-            FROM images
-            WHERE post_id IN(?` + strings.Repeat(",?", len(posts)-1) + ")"
-
-	args := make([]interface{}, len(posts))
-	for i, p := range posts {
-		args[i] = p.ID
-	}
-
-	images, err := r.fetchImages(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-	for _, p := range posts {
-		for _, i := range images {
-			if p.ID == i.PostID {
-				p.Images = append(p.Images, i)
 			}
 		}
 	}
@@ -324,12 +247,6 @@ func (r *postRepo) CreatePost(ctx context.Context, p *models.Post) error {
 		return err
 	}
 
-	if len(p.Images) != 0 {
-		if err := r.batchCreateImages(ctx, p); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -348,10 +265,6 @@ func (r *postRepo) GetPostByID(ctx context.Context, id int64) (*models.Post, err
 	}
 
 	if err := r.fillPostWithFishTypeIDs(ctx, list[0]); err != nil {
-		return nil, err
-	}
-
-	if err := r.fillPostWithImages(ctx, list[0]); err != nil {
 		return nil, err
 	}
 
@@ -432,10 +345,6 @@ func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cur
 		return nil, err
 	}
 
-	if err := r.fillListPostsWithImages(ctx, posts); err != nil {
-		return nil, err
-	}
-
 	return posts, nil
 }
 
@@ -475,10 +384,6 @@ func (r *postRepo) UpdatePost(ctx context.Context, p *models.Post) error {
 		return err
 	}
 
-	if err := r.batchCreateImages(ctx, p); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -503,49 +408,4 @@ func (r *postRepo) DeletePost(ctx context.Context, id int64) error {
 	}
 
 	return nil
-}
-
-func (r *postRepo) batchCreateImages(ctx context.Context, p *models.Post) error {
-	query := `INSERT INTO images(name, post_id, updated_at, created_at)
-						VALUES (?, ?, ?, ?)` + strings.Repeat(", (?, ?, ?, ?)", len(p.Images)-1)
-
-	fmt.Printf("image: %#v\n", p)
-
-	for _, image := range p.Images {
-		image.PostID = p.ID
-	}
-
-	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
-	if err != nil {
-		return err
-	}
-
-	args := []interface{}{}
-	for _, img := range p.Images {
-		args = append(args, img.Name, img.PostID, img.UpdatedAt, img.CreatedAt)
-	}
-
-	res, err := stmt.ExecContext(ctx, args...)
-	if err != nil {
-		return err
-	}
-
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowCnt != int64(len(p.Images)) {
-		return fmt.Errorf("expected %d row affected, got %d rows affected", len(p.Images), rowCnt)
-	}
-
-	lastID, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-
-	for i, img := range p.Images {
-		img.ID = lastID - int64(len(p.Images)) + int64(i) + 2
-	}
-	return nil
-
 }

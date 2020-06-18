@@ -53,17 +53,15 @@ func (c *postController) ListPosts(ctx context.Context, in *pb.ListPostsReq) (*p
 }
 
 func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) error {
-
 	ctx := stream.Context()
-	in := &pb.CreatePostReqInfo{}
+	p := &models.Post{}
 
-	imageBufs := map[int64]*bytes.Buffer{}
+	imageBufs := []*bytes.Buffer{&bytes.Buffer{}}
 
 	for {
 		req, err := stream.Recv()
-
 		if err == io.EOF {
-			goto END
+			break
 		}
 		if err != nil {
 			return err
@@ -71,42 +69,34 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 
 		switch x := req.Data.(type) {
 		case *pb.CreatePostReq_Info:
-			*in = *x.Info
-		case *pb.CreatePostReq_ImageChunk:
-
-			chunkData := x.ImageChunk.ChunkData
-			chunkNum := x.ImageChunk.ChunkNum
-
-			if imageBufs[chunkNum] == nil {
-				imageBufs[chunkNum] = &bytes.Buffer{}
-			}
-
-			if _, err := imageBufs[chunkNum].Write(chunkData); err != nil {
+			mAt, err := ptypes.Timestamp(x.Info.MeetingAt)
+			if err != nil {
 				return err
 			}
+
+			p.Title = x.Info.Title
+			p.Content = x.Info.Content
+			p.FishingSpotTypeID = x.Info.FishingSpotTypeId
+			p.PostsFishTypes = models.ConvPostsFishTypes(x.Info.FishTypeIds)
+			p.PrefectureID = x.Info.PrefectureId
+			p.MeetingPlaceID = x.Info.MeetingPlaceId
+			p.MeetingAt = mAt
+			p.MaxApply = x.Info.MaxApply
+			p.UserID = x.Info.UserId
+
+		case *pb.CreatePostReq_ImageChunk:
+			lastBuf := imageBufs[len(imageBufs)-1]
+
+			if _, err := lastBuf.Write(x.ImageChunk); err != nil {
+				return err
+			}
+
+		case *pb.CreatePostReq_NextImageSignal:
+			imageBufs = append(imageBufs, &bytes.Buffer{})
 
 		default:
 			return fmt.Errorf("CreatePostReq.Request has unexpected type %T", x)
 		}
-	}
-
-END:
-
-	mAt, err := ptypes.Timestamp(in.MeetingAt)
-	if err != nil {
-		return err
-	}
-
-	p := &models.Post{
-		Title:             in.Title,
-		Content:           in.Content,
-		FishingSpotTypeID: in.FishingSpotTypeId,
-		PostsFishTypes:    models.ConvPostsFishTypes(in.FishTypeIds),
-		PrefectureID:      in.PrefectureId,
-		MeetingPlaceID:    in.MeetingPlaceId,
-		MeetingAt:         mAt,
-		MaxApply:          in.MaxApply,
-		UserID:            in.UserId,
 	}
 
 	sagaID, err := c.postInteractor.CreatePost(ctx, p, imageBufs)
@@ -126,15 +116,15 @@ END:
 
 func (c *postController) UpdatePost(stream pb.PostService_UpdatePostServer) error {
 	ctx := stream.Context()
-	in := &pb.UpdatePostReqInfo{}
+	p := &models.Post{}
 
-	imageBufs := map[int64]*bytes.Buffer{}
+	imageBufs := []*bytes.Buffer{}
+	dltImageIDs := []int64{}
 
 	for {
 		req, err := stream.Recv()
-
 		if err == io.EOF {
-			goto END
+			break
 		}
 		if err != nil {
 			return err
@@ -142,44 +132,42 @@ func (c *postController) UpdatePost(stream pb.PostService_UpdatePostServer) erro
 
 		switch x := req.Data.(type) {
 		case *pb.UpdatePostReq_Info:
-			*in = *x.Info
-		case *pb.UpdatePostReq_ImageChunk:
-
-			chunkData := x.ImageChunk.ChunkData
-			chunkNum := x.ImageChunk.ChunkNum
-
-			if imageBufs[chunkNum] == nil {
-				imageBufs[chunkNum] = &bytes.Buffer{}
-			}
-
-			if _, err := imageBufs[chunkNum].Write(chunkData); err != nil {
+			mAt, err := ptypes.Timestamp(x.Info.MeetingAt)
+			if err != nil {
 				return err
 			}
+
+			p.ID = x.Info.Id
+			p.Title = x.Info.Title
+			p.Content = x.Info.Content
+			p.FishingSpotTypeID = x.Info.FishingSpotTypeId
+			p.PostsFishTypes = models.ConvPostsFishTypes(x.Info.FishTypeIds)
+			p.PrefectureID = x.Info.PrefectureId
+			p.MeetingPlaceID = x.Info.MeetingPlaceId
+			p.MeetingAt = mAt
+			p.MaxApply = x.Info.MaxApply
+			dltImageIDs = x.Info.ImageIdsToDelete
+
+			imageBufs = append(imageBufs, &bytes.Buffer{})
+
+		case *pb.UpdatePostReq_ImageChunk:
+			lastBuf := imageBufs[len(imageBufs)-1]
+
+			if _, err := lastBuf.Write(x.ImageChunk); err != nil {
+				return err
+			}
+
+		case *pb.UpdatePostReq_NextImageSignal:
+			imageBufs = append(imageBufs, &bytes.Buffer{})
 
 		default:
 			return fmt.Errorf("CreatePostReq.Request has unexpected type %T", x)
 		}
 	}
 
-END:
+	fmt.Println(len(imageBufs))
 
-	mAt, err := ptypes.Timestamp(in.MeetingAt)
-	if err != nil {
-		return err
-	}
-
-	p := &models.Post{
-		ID:                in.Id,
-		Title:             in.Title,
-		Content:           in.Content,
-		FishingSpotTypeID: in.FishingSpotTypeId,
-		PostsFishTypes:    models.ConvPostsFishTypes(in.FishTypeIds),
-		PrefectureID:      in.PrefectureId,
-		MeetingPlaceID:    in.MeetingPlaceId,
-		MeetingAt:         mAt,
-		MaxApply:          in.MaxApply,
-	}
-	if err := c.postInteractor.UpdatePost(ctx, p, imageBufs, in.LeaveImageIds); err != nil {
+	if err := c.postInteractor.UpdatePost(ctx, p, imageBufs, dltImageIDs); err != nil {
 		return err
 	}
 

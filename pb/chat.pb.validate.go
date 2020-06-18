@@ -47,6 +47,36 @@ func (m *Room) Validate() error {
 
 	// no validation rules for PostId
 
+	for idx, item := range m.GetMembers() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return RoomValidationError{
+					field:  fmt.Sprintf("Members[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	for idx, item := range m.GetMessages() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return RoomValidationError{
+					field:  fmt.Sprintf("Messages[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
 	if v, ok := interface{}(m.GetCreatedAt()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return RoomValidationError{
@@ -453,23 +483,23 @@ var _ interface {
 	ErrorName() string
 } = CreateRoomReqValidationError{}
 
-// Validate checks the field values on GetMemberReq with the rules defined in
+// Validate checks the field values on IsMemberReq with the rules defined in
 // the proto definition for this message. If any rules are violated, an error
 // is returned.
-func (m *GetMemberReq) Validate() error {
+func (m *IsMemberReq) Validate() error {
 	if m == nil {
 		return nil
 	}
 
-	if m.GetRoomId() < 1 {
-		return GetMemberReqValidationError{
-			field:  "RoomId",
+	if m.GetPostId() < 1 {
+		return IsMemberReqValidationError{
+			field:  "PostId",
 			reason: "value must be greater than or equal to 1",
 		}
 	}
 
 	if m.GetUserId() < 1 {
-		return GetMemberReqValidationError{
+		return IsMemberReqValidationError{
 			field:  "UserId",
 			reason: "value must be greater than or equal to 1",
 		}
@@ -478,9 +508,9 @@ func (m *GetMemberReq) Validate() error {
 	return nil
 }
 
-// GetMemberReqValidationError is the validation error returned by
-// GetMemberReq.Validate if the designated constraints aren't met.
-type GetMemberReqValidationError struct {
+// IsMemberReqValidationError is the validation error returned by
+// IsMemberReq.Validate if the designated constraints aren't met.
+type IsMemberReqValidationError struct {
 	field  string
 	reason string
 	cause  error
@@ -488,22 +518,22 @@ type GetMemberReqValidationError struct {
 }
 
 // Field function returns field value.
-func (e GetMemberReqValidationError) Field() string { return e.field }
+func (e IsMemberReqValidationError) Field() string { return e.field }
 
 // Reason function returns reason value.
-func (e GetMemberReqValidationError) Reason() string { return e.reason }
+func (e IsMemberReqValidationError) Reason() string { return e.reason }
 
 // Cause function returns cause value.
-func (e GetMemberReqValidationError) Cause() error { return e.cause }
+func (e IsMemberReqValidationError) Cause() error { return e.cause }
 
 // Key function returns key value.
-func (e GetMemberReqValidationError) Key() bool { return e.key }
+func (e IsMemberReqValidationError) Key() bool { return e.key }
 
 // ErrorName returns error name.
-func (e GetMemberReqValidationError) ErrorName() string { return "GetMemberReqValidationError" }
+func (e IsMemberReqValidationError) ErrorName() string { return "IsMemberReqValidationError" }
 
 // Error satisfies the builtin error interface
-func (e GetMemberReqValidationError) Error() string {
+func (e IsMemberReqValidationError) Error() string {
 	cause := ""
 	if e.cause != nil {
 		cause = fmt.Sprintf(" | caused by: %v", e.cause)
@@ -515,14 +545,14 @@ func (e GetMemberReqValidationError) Error() string {
 	}
 
 	return fmt.Sprintf(
-		"invalid %sGetMemberReq.%s: %s%s",
+		"invalid %sIsMemberReq.%s: %s%s",
 		key,
 		e.field,
 		e.reason,
 		cause)
 }
 
-var _ error = GetMemberReqValidationError{}
+var _ error = IsMemberReqValidationError{}
 
 var _ interface {
 	Field() string
@@ -530,7 +560,7 @@ var _ interface {
 	Key() bool
 	Cause() error
 	ErrorName() string
-} = GetMemberReqValidationError{}
+} = IsMemberReqValidationError{}
 
 // Validate checks the field values on ListMembersReq with the rules defined in
 // the proto definition for this message. If any rules are violated, an error

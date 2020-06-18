@@ -357,3 +357,228 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = CreateRoomValidationError{}
+
+// Validate checks the field values on PostDeleted with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *PostDeleted) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetPost()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return PostDeletedValidationError{
+				field:  "Post",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// PostDeletedValidationError is the validation error returned by
+// PostDeleted.Validate if the designated constraints aren't met.
+type PostDeletedValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e PostDeletedValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e PostDeletedValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e PostDeletedValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e PostDeletedValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e PostDeletedValidationError) ErrorName() string { return "PostDeletedValidationError" }
+
+// Error satisfies the builtin error interface
+func (e PostDeletedValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sPostDeleted.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = PostDeletedValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = PostDeletedValidationError{}
+
+// Validate checks the field values on ApplyPostCreated with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *ApplyPostCreated) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetApplyPost()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ApplyPostCreatedValidationError{
+				field:  "ApplyPost",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// ApplyPostCreatedValidationError is the validation error returned by
+// ApplyPostCreated.Validate if the designated constraints aren't met.
+type ApplyPostCreatedValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ApplyPostCreatedValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ApplyPostCreatedValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ApplyPostCreatedValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ApplyPostCreatedValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ApplyPostCreatedValidationError) ErrorName() string { return "ApplyPostCreatedValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ApplyPostCreatedValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sApplyPostCreated.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ApplyPostCreatedValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ApplyPostCreatedValidationError{}
+
+// Validate checks the field values on ApplyPostDeleted with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *ApplyPostDeleted) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetApplyPost()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ApplyPostDeletedValidationError{
+				field:  "ApplyPost",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// ApplyPostDeletedValidationError is the validation error returned by
+// ApplyPostDeleted.Validate if the designated constraints aren't met.
+type ApplyPostDeletedValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ApplyPostDeletedValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ApplyPostDeletedValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ApplyPostDeletedValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ApplyPostDeletedValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ApplyPostDeletedValidationError) ErrorName() string { return "ApplyPostDeletedValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ApplyPostDeletedValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sApplyPostDeleted.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ApplyPostDeletedValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ApplyPostDeletedValidationError{}

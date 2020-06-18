@@ -11,9 +11,10 @@ import (
 	"github.com/ezio1119/fishapp-post/infrastructure/sqlhandler"
 	"github.com/ezio1119/fishapp-post/interfaces/controllers"
 	"github.com/ezio1119/fishapp-post/interfaces/repo"
+	"github.com/ezio1119/fishapp-post/pb"
 	"github.com/ezio1119/fishapp-post/usecase/interactor"
 	"github.com/ezio1119/fishapp-post/usecase/interactor/saga"
-	repoI "github.com/ezio1119/fishapp-post/usecase/repo"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -30,19 +31,12 @@ func main() {
 	}
 	defer natsConn.Close()
 
-	var imageUploaderRepo repoI.ImageUploaderRepo
-	if conf.C.Sv.Debug {
-		imageUploaderRepo = repo.NewImageUploaderDevRepo()
-	} else {
-
-		gcsClient, err := infrastructure.NewGCSClient(ctx)
-		if err != nil {
-			panic(err)
-		}
-		defer gcsClient.Close()
-
-		imageUploaderRepo = repo.NewImageUploaderRepo(gcsClient)
+	grpcConn, err := grpc.DialContext(ctx, conf.C.API.ImageURL, grpc.WithInsecure())
+	if err != nil {
+		panic(err)
 	}
+	defer grpcConn.Close()
+	imageC := pb.NewImageServiceClient(grpcConn)
 
 	ctxTimeout := time.Duration(conf.C.Sv.Timeout) * time.Second
 	sqlHandler := sqlhandler.NewSqlHandler(dbConn)
@@ -52,18 +46,19 @@ func main() {
 		repo.NewPostRepo(sqlHandler),
 		repo.NewSagaInstanceRepo(sqlHandler),
 		repo.NewTransactionRepo(sqlHandler),
-		imageUploaderRepo,
 	)
 
 	pController := controllers.NewPostController(
 		interactor.NewPostInteractor(
 			repo.NewPostRepo(sqlHandler),
-			imageUploaderRepo,
+			repo.NewImageRepo(imageC),
 			repo.NewApplyPostRepo(sqlHandler),
 			repo.NewTransactionRepo(sqlHandler),
+			repo.NewOutboxRepo(sqlHandler),
 			createPostSagaManager,
 			ctxTimeout,
 		))
+
 	server := infrastructure.NewGrpcServer(
 		middleware.InitMiddleware(),
 		pController,

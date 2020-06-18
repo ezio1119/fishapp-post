@@ -3,6 +3,7 @@ package interactor
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/conf"
@@ -10,7 +11,6 @@ import (
 	"github.com/ezio1119/fishapp-post/usecase/interactor/saga"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
 	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -18,8 +18,8 @@ import (
 type PostInteractor interface {
 	GetPost(ctx context.Context, id int64) (*models.Post, error)
 	ListPosts(ctx context.Context, p *models.Post, pageSize int64, pageToken string, filter *models.PostFilter) ([]*models.Post, string, error)
-	CreatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer) (string, error)
-	UpdatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer, deleteImageIDs []int64) error
+	CreatePost(ctx context.Context, p *models.Post, imageBufs []*bytes.Buffer) (string, error)
+	UpdatePost(ctx context.Context, p *models.Post, imageBufs []*bytes.Buffer, deleteImageIDs []int64) error
 	DeletePost(ctx context.Context, id int64) error
 
 	GetApplyPost(ctx context.Context, id int64) (*models.ApplyPost, error)
@@ -31,27 +31,24 @@ type PostInteractor interface {
 
 type postInteractor struct {
 	postRepo              repo.PostRepo
-	imageUploaderRepo     repo.ImageUploaderRepo
+	imageRepo             repo.ImageRepo
 	applyPostRepo         repo.ApplyPostRepo
 	transactionRepo       repo.TransactionRepo
+	outboxRepo            repo.OutboxRepo
 	createPostSagaManager *saga.CreatePostSagaManager
 	ctxTimeout            time.Duration
 }
 
 func NewPostInteractor(
 	pr repo.PostRepo,
-	ir repo.ImageUploaderRepo,
+	ir repo.ImageRepo,
 	ar repo.ApplyPostRepo,
 	tr repo.TransactionRepo,
+	or repo.OutboxRepo,
 	sm *saga.CreatePostSagaManager,
 	timeout time.Duration,
 ) PostInteractor {
-	return &postInteractor{pr, ir, ar, tr, sm, timeout}
-}
-
-func removeImage(images []*models.Image, i int) []*models.Image {
-	images[i] = images[len(images)-1]
-	return images[:len(images)-1]
+	return &postInteractor{pr, ir, ar, tr, or, sm, timeout}
 }
 
 func (i *postInteractor) GetPost(ctx context.Context, id int64) (*models.Post, error) {
@@ -94,7 +91,7 @@ func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize
 	return list, nextToken, nil
 }
 
-func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer) (string, error) {
+func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBufs []*bytes.Buffer) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
@@ -105,38 +102,6 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 	for _, f := range p.PostsFishTypes {
 		f.CreatedAt = now
 		f.UpdatedAt = now
-	}
-
-	if len(imageBufs) != 0 {
-		resizeChan := make(chan resizeChan)
-		eg := errgroup.Group{}
-
-		go func() {
-			eg.Wait()
-			close(resizeChan)
-		}()
-
-		for _, buf := range imageBufs {
-			buf := buf
-			eg.Go(func() error {
-				return resizeImage(buf, resizeChan, uuid.New().String())
-			})
-		}
-
-		for r := range resizeChan {
-			if err := i.imageUploaderRepo.UploadImage(ctx, r.io, r.name); err != nil {
-				return "", err
-			}
-			p.Images = append(p.Images, &models.Image{
-				Name:      r.name,
-				CreatedAt: now,
-				UpdatedAt: now,
-			})
-		}
-
-		if err := eg.Wait(); err != nil {
-			return "", err
-		}
 	}
 
 	ctx, err := i.transactionRepo.BeginTx(ctx)
@@ -161,8 +126,23 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 		return "", err
 	}
 
+	if err := i.imageRepo.BatchCreateImages(ctx, p.ID, imageBufs); err != nil {
+		if err := i.postRepo.DeletePost(ctx, p.ID); err != nil {
+			return "", err
+		}
+		return "", err
+	}
+
 	sagaID := uuid.New().String()
-	state := saga.NewCreatePostSagaState(p, "init", sagaID)
+	pProto, err := convPostProto(p)
+	if err != nil {
+		return "", err
+	}
+
+	state, err := saga.NewCreatePostSagaState(pProto, "init", sagaID)
+	if err != nil {
+		return "", err
+	}
 
 	s := i.createPostSagaManager.NewCreatePostSagaManager(state)
 
@@ -175,9 +155,10 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 }
 
 // imageBufsは新しいイメージ、existsImageIDsはアップロード済みの画像で、そのまま残すIDs
-func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBufs map[int64]*bytes.Buffer, leaveImageIDs []int64) error {
+func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBufs []*bytes.Buffer, dltImageIDs []int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
+	fmt.Println(dltImageIDs)
 
 	now := time.Now()
 
@@ -186,55 +167,10 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBu
 		return err
 	}
 
-	for _, leaveID := range leaveImageIDs {
-		for _, oldImage := range oldP.Images {
-			if leaveID != oldImage.ID {
-				if err := i.imageUploaderRepo.DeleteUploadedImage(ctx, oldImage.Name); err != nil {
-					return err
-				}
-			}
-			oldImage.CreatedAt = now
-			oldImage.UpdatedAt = now
-			p.Images = append(p.Images, oldImage)
-		}
-	}
-
-	if len(imageBufs) != 0 {
-		resizeChan := make(chan resizeChan)
-		eg := errgroup.Group{}
-
-		go func() {
-			eg.Wait()
-			close(resizeChan)
-		}()
-
-		for _, buf := range imageBufs {
-			buf := buf
-			eg.Go(func() error {
-				return resizeImage(buf, resizeChan, uuid.New().String())
-			})
-		}
-
-		for r := range resizeChan {
-			if err := i.imageUploaderRepo.UploadImage(ctx, r.io, r.name); err != nil {
-				return err
-			}
-			p.Images = append(p.Images, &models.Image{
-				Name:      r.name,
-				CreatedAt: now,
-				UpdatedAt: now,
-			})
-		}
-
-		if err := eg.Wait(); err != nil {
-			return err
-		}
-	}
-
-	// 完全なデータにする
+	// 	// 完全なデータにする
 	p.UserID = oldP.UserID
 	p.CreatedAt = oldP.CreatedAt
-	p.UpdatedAt = oldP.UpdatedAt
+	p.UpdatedAt = now
 	for _, f := range p.PostsFishTypes {
 		f.CreatedAt = now
 		f.UpdatedAt = now
@@ -270,16 +206,73 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBu
 		return err
 	}
 
+	if len(dltImageIDs) != 0 {
+		if err := i.imageRepo.BatchDeleteImages(ctx, dltImageIDs); err != nil {
+			if err := i.postRepo.UpdatePost(ctx, oldP); err != nil {
+				return err
+			}
+			return err
+		}
+
+	}
+
+	if len(imageBufs) != 0 {
+		if err := i.imageRepo.BatchCreateImages(ctx, p.ID, imageBufs); err != nil {
+			if err := i.postRepo.UpdatePost(ctx, oldP); err != nil {
+				return err
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (i *postInteractor) DeletePost(ctx context.Context, id int64) error {
-	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
-	defer cancel()
+	// 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
+	// 	defer cancel()
 
-	if err := i.postRepo.DeletePost(ctx, id); err != nil {
-		return err
-	}
+	// 	p, err := i.postRepo.GetPostByID(ctx, id)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	event, err := newPostDeletedEvent(p)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	ctx, err = i.transactionRepo.BeginTx(ctx)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	defer func() {
+	// 		if recover() != nil {
+	// 			i.transactionRepo.Roolback(ctx)
+	// 		}
+	// 	}()
+
+	// 	if err := i.postRepo.DeletePost(ctx, id); err != nil {
+	// 		i.transactionRepo.Roolback(ctx)
+	// 		return err
+	// 	}
+
+	// 	if err := i.outboxRepo.CreateOutbox(ctx, event); err != nil {
+	// 		i.transactionRepo.Roolback(ctx)
+	// 		return err
+	// 	}
+
+	// 	ctx, err = i.transactionRepo.Commit(ctx)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	for _, img := range p.Images {
+	// 		if err := i.imageUploaderRepo.DeleteUploadedImage(ctx, img.Name); err != nil {
+	// 			return err
+	// 		}
+	// 	}
 
 	return nil
 }
@@ -336,11 +329,23 @@ func (i *postInteractor) CreateApplyPost(ctx context.Context, a *models.ApplyPos
 	if err != nil {
 		return err
 	}
+
 	if p.MaxApply <= cnt {
 		return status.Error(codes.FailedPrecondition, "already reached max_apply limit")
 	}
 
 	if err := i.applyPostRepo.CreateApplyPost(ctx, a); err != nil {
+		i.transactionRepo.Roolback(ctx)
+		return err
+	}
+
+	event, err := newApplyPostCreatedEvent(a)
+	if err != nil {
+		i.transactionRepo.Roolback(ctx)
+		return err
+	}
+
+	if err := i.outboxRepo.CreateOutbox(ctx, event); err != nil {
 		i.transactionRepo.Roolback(ctx)
 		return err
 	}
@@ -356,8 +361,42 @@ func (i *postInteractor) CreateApplyPost(ctx context.Context, a *models.ApplyPos
 func (i *postInteractor) DeleteApplyPost(ctx context.Context, id int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
-	if err := i.applyPostRepo.DeleteApplyPost(ctx, id); err != nil {
+
+	a, err := i.applyPostRepo.GetApplyPostByID(ctx, id)
+	if err != nil {
 		return err
 	}
+
+	event, err := newApplyPostDeletedEvent(a)
+	if err != nil {
+		return err
+	}
+
+	ctx, err = i.transactionRepo.BeginTx(ctx)
+	if err != nil {
+		return nil
+	}
+
+	defer func() {
+		if recover() != nil {
+			i.transactionRepo.Roolback(ctx)
+		}
+	}()
+
+	if err := i.applyPostRepo.DeleteApplyPost(ctx, a.ID); err != nil {
+		i.transactionRepo.Roolback(ctx)
+		return err
+	}
+
+	if err := i.outboxRepo.CreateOutbox(ctx, event); err != nil {
+		i.transactionRepo.Roolback(ctx)
+		return err
+	}
+
+	ctx, err = i.transactionRepo.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

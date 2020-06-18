@@ -23,3 +23,5 @@ nats:
   queuegroup: fishapp-post
 gcs:
   bucketname: fishapp
+api:
+  image_url: image:50051

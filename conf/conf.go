@@ -37,6 +37,9 @@ type config struct {
 	Gcs struct {
 		BucketName string
 	}
+	API struct {
+		ImageURL string `mapstructure:"image_url"`
+	}
 }
 
 var C config

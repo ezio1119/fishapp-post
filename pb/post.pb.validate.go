@@ -69,21 +69,6 @@ func (m *Post) Validate() error {
 
 	// no validation rules for MaxApply
 
-	for idx, item := range m.GetImages() {
-		_, _ = idx, item
-
-		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return PostValidationError{
-					field:  fmt.Sprintf("Images[%v]", idx),
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
-			}
-		}
-
-	}
-
 	if v, ok := interface{}(m.GetCreatedAt()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return PostValidationError{
@@ -250,164 +235,6 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ApplyPostValidationError{}
-
-// Validate checks the field values on Image with the rules defined in the
-// proto definition for this message. If any rules are violated, an error is returned.
-func (m *Image) Validate() error {
-	if m == nil {
-		return nil
-	}
-
-	// no validation rules for Id
-
-	// no validation rules for Name
-
-	// no validation rules for PostId
-
-	if v, ok := interface{}(m.GetCreatedAt()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return ImageValidationError{
-				field:  "CreatedAt",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
-
-	if v, ok := interface{}(m.GetUpdatedAt()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return ImageValidationError{
-				field:  "UpdatedAt",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
-
-	return nil
-}
-
-// ImageValidationError is the validation error returned by Image.Validate if
-// the designated constraints aren't met.
-type ImageValidationError struct {
-	field  string
-	reason string
-	cause  error
-	key    bool
-}
-
-// Field function returns field value.
-func (e ImageValidationError) Field() string { return e.field }
-
-// Reason function returns reason value.
-func (e ImageValidationError) Reason() string { return e.reason }
-
-// Cause function returns cause value.
-func (e ImageValidationError) Cause() error { return e.cause }
-
-// Key function returns key value.
-func (e ImageValidationError) Key() bool { return e.key }
-
-// ErrorName returns error name.
-func (e ImageValidationError) ErrorName() string { return "ImageValidationError" }
-
-// Error satisfies the builtin error interface
-func (e ImageValidationError) Error() string {
-	cause := ""
-	if e.cause != nil {
-		cause = fmt.Sprintf(" | caused by: %v", e.cause)
-	}
-
-	key := ""
-	if e.key {
-		key = "key for "
-	}
-
-	return fmt.Sprintf(
-		"invalid %sImage.%s: %s%s",
-		key,
-		e.field,
-		e.reason,
-		cause)
-}
-
-var _ error = ImageValidationError{}
-
-var _ interface {
-	Field() string
-	Reason() string
-	Key() bool
-	Cause() error
-	ErrorName() string
-} = ImageValidationError{}
-
-// Validate checks the field values on ImageChunk with the rules defined in the
-// proto definition for this message. If any rules are violated, an error is returned.
-func (m *ImageChunk) Validate() error {
-	if m == nil {
-		return nil
-	}
-
-	// no validation rules for ChunkNum
-
-	// no validation rules for ChunkData
-
-	return nil
-}
-
-// ImageChunkValidationError is the validation error returned by
-// ImageChunk.Validate if the designated constraints aren't met.
-type ImageChunkValidationError struct {
-	field  string
-	reason string
-	cause  error
-	key    bool
-}
-
-// Field function returns field value.
-func (e ImageChunkValidationError) Field() string { return e.field }
-
-// Reason function returns reason value.
-func (e ImageChunkValidationError) Reason() string { return e.reason }
-
-// Cause function returns cause value.
-func (e ImageChunkValidationError) Cause() error { return e.cause }
-
-// Key function returns key value.
-func (e ImageChunkValidationError) Key() bool { return e.key }
-
-// ErrorName returns error name.
-func (e ImageChunkValidationError) ErrorName() string { return "ImageChunkValidationError" }
-
-// Error satisfies the builtin error interface
-func (e ImageChunkValidationError) Error() string {
-	cause := ""
-	if e.cause != nil {
-		cause = fmt.Sprintf(" | caused by: %v", e.cause)
-	}
-
-	key := ""
-	if e.key {
-		key = "key for "
-	}
-
-	return fmt.Sprintf(
-		"invalid %sImageChunk.%s: %s%s",
-		key,
-		e.field,
-		e.reason,
-		cause)
-}
-
-var _ error = ImageChunkValidationError{}
-
-var _ interface {
-	Field() string
-	Reason() string
-	Key() bool
-	Cause() error
-	ErrorName() string
-} = ImageChunkValidationError{}
 
 // Validate checks the field values on GetPostReq with the rules defined in the
 // proto definition for this message. If any rules are violated, an error is returned.
@@ -675,17 +502,17 @@ func (m *CreatePostReq) Validate() error {
 			}
 		}
 
-	case *CreatePostReq_ImageChunk:
+	case *CreatePostReq_NextImageSignal:
 
-		if v, ok := interface{}(m.GetImageChunk()).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return CreatePostReqValidationError{
-					field:  "ImageChunk",
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
+		if m.GetNextImageSignal() != true {
+			return CreatePostReqValidationError{
+				field:  "NextImageSignal",
+				reason: "value must equal true",
 			}
 		}
+
+	case *CreatePostReq_ImageChunk:
+		// no validation rules for ImageChunk
 
 	default:
 		return CreatePostReqValidationError{
@@ -1185,17 +1012,17 @@ func (m *UpdatePostReq) Validate() error {
 			}
 		}
 
-	case *UpdatePostReq_ImageChunk:
+	case *UpdatePostReq_NextImageSignal:
 
-		if v, ok := interface{}(m.GetImageChunk()).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return UpdatePostReqValidationError{
-					field:  "ImageChunk",
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
+		if m.GetNextImageSignal() != true {
+			return UpdatePostReqValidationError{
+				field:  "NextImageSignal",
+				reason: "value must equal true",
 			}
 		}
+
+	case *UpdatePostReq_ImageChunk:
+		// no validation rules for ImageChunk
 
 	default:
 		return UpdatePostReqValidationError{

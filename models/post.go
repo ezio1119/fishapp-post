@@ -15,7 +15,6 @@ type Post struct {
 	MeetingAt         time.Time
 	MaxApply          int64
 	UserID            int64
-	Images            []*Image
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }

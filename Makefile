@@ -12,7 +12,7 @@ proto:
 	-I/go/src/github.com/envoyproxy/protoc-gen-validate \
 	--go_out=plugins=grpc:/pb \
 	--validate_out="lang=go:/pb" \
-	post.proto event.proto chat.proto
+	post.proto event.proto chat.proto image.proto
 
 cli:
 	docker run --rm --net=fishapp-net znly/grpc_cli \
@@ -55,3 +55,10 @@ logs:
 
 dblogs:
 	$(DC) logs -f  $(API)-db
+
+push:
+	cd schema
+	git pull
+	git add .
+	git commit -m "	$(m)"
+	git push

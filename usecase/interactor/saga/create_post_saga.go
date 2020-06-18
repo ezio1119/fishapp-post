@@ -18,12 +18,12 @@ type createPostSagaState struct {
 	sagaID       string
 	sagaType     string
 	currentState string
-	post         *models.Post
+	post         *pb.Post
 	createdAt    time.Time
 	updatedAt    time.Time
 }
 
-func NewCreatePostSagaState(p *models.Post, state, sagaID string) *createPostSagaState {
+func NewCreatePostSagaState(p *pb.Post, state, sagaID string) (*createPostSagaState, error) {
 	now := time.Now()
 	return &createPostSagaState{
 		sagaType:     "CreatePostSaga",
@@ -32,11 +32,11 @@ func NewCreatePostSagaState(p *models.Post, state, sagaID string) *createPostSag
 		currentState: state,
 		createdAt:    now,
 		updatedAt:    now,
-	}
+	}, nil
 }
 
 func (s *createPostSagaState) convSagaInstance(state string) (*models.SagaInstance, error) {
-	jsonPost, err := json.Marshal(s.post)
+	jsonPost, err := protojson.Marshal(s.post)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,6 @@ type CreatePostSagaManager struct {
 	postRepo            repo.PostRepo
 	sagaInstanceRepo    repo.SagaInstanceRepo
 	transactionRepo     repo.TransactionRepo
-	imageUploaderRepo   repo.ImageUploaderRepo
 }
 
 func InitCreatePostSagaManager(
@@ -65,14 +64,12 @@ func InitCreatePostSagaManager(
 	pr repo.PostRepo,
 	sr repo.SagaInstanceRepo,
 	tr repo.TransactionRepo,
-	iur repo.ImageUploaderRepo,
 ) *CreatePostSagaManager {
 	return &CreatePostSagaManager{
 		outboxRepo:        or,
 		postRepo:          pr,
 		sagaInstanceRepo:  sr,
 		transactionRepo:   tr,
-		imageUploaderRepo: iur,
 	}
 }
 
@@ -84,8 +81,6 @@ func (m *CreatePostSagaManager) NewCreatePostSagaManager(state *createPostSagaSt
 		"init",
 		fsm.Events{
 			// {Name: "UploadImage", Src: []string{"Init"}, Dst: "UploadingImage"},
-			// {Name: "UploadImage", Src: []string{"Init"}, Dst: "UploadingImage"},
-			// {Name: "", Src: []string{"UploadingImage"}, Dst: "CreatingCreateRoom"},
 			{Name: "CreateRoom", Src: []string{"init"}, Dst: "CreatingRoom"},
 			{Name: "RejectPost", Src: []string{"CreatingRoom"}, Dst: "PostRejected"},
 			{Name: "ApprovePost", Src: []string{"CreatingRoom"}, Dst: "PostApproved"},
@@ -95,8 +90,6 @@ func (m *CreatePostSagaManager) NewCreatePostSagaManager(state *createPostSagaSt
 			"CreateRoom":  func(e *fsm.Event) { m.createRoom(e) },
 			"RejectPost":  func(e *fsm.Event) { m.rejectPost(e) },
 			"ApprovePost": func(e *fsm.Event) { m.approvePost(e) },
-			// "enter_PostRejected": func(e *fsm.Event) { m.rejectPost(e) },
-			// "enter_state": func(e *fsm.Event) { s.enterState(e) },
 		},
 	)
 
@@ -118,23 +111,15 @@ func (m *CreatePostSagaManager) createRoom(e *fsm.Event) {
 		return
 	}
 
-	eventData, err := protojson.Marshal(&pb.CreateRoom{
+	event, err := newCreateRoomEvent(&pb.CreateRoom{
 		SagaId: m.createPostSagaState.sagaID,
-		PostId: m.createPostSagaState.post.ID,
-		UserId: m.createPostSagaState.post.UserID,
+		PostId: m.createPostSagaState.post.Id,
+		UserId: m.createPostSagaState.post.UserId,
 	})
-
-	now := time.Now()
-
-	event := &models.Outbox{
-		ID:        uuid.New().String(),
-		EventType: "create.room",
-		EventData: eventData,
-		Channel:   "create.room",
-		CreatedAt: now,
-		UpdatedAt: now,
+	if err != nil {
+		e.Cancel(err)
+		return
 	}
-
 	// sagaインスタンスの永続化とイベントの発行を同じトランザクション内でやる
 	ctx, err = m.transactionRepo.BeginTx(ctx)
 	if err != nil {
@@ -213,7 +198,7 @@ func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
 		}
 	}()
 
-	if err := m.postRepo.DeletePost(ctx, m.createPostSagaState.post.ID); err != nil {
+	if err := m.postRepo.DeletePost(ctx, m.createPostSagaState.post.Id); err != nil {
 		m.transactionRepo.Roolback(ctx)
 		e.Cancel(err)
 		return
@@ -236,13 +221,6 @@ func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
 		e.Cancel(err)
 		return
 	}
-
-	for _, i := range m.createPostSagaState.post.Images {
-		if err := m.imageUploaderRepo.DeleteUploadedImage(ctx, i.Name); err != nil {
-			e.Cancel(err)
-			return
-		}
-	}
 }
 
 func (m *CreatePostSagaManager) approvePost(e *fsm.Event) {
@@ -251,7 +229,7 @@ func (m *CreatePostSagaManager) approvePost(e *fsm.Event) {
 		e.Cancel(errors.New("missing context"))
 		return
 	}
-	jsonPost, err := json.Marshal(m.createPostSagaState.post)
+	jsonPost, err := protojson.Marshal(m.createPostSagaState.post)
 	if err != nil {
 		e.Cancel(err)
 		return

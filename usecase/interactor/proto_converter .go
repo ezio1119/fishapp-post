@@ -1,4 +1,4 @@
-package controllers
+package interactor
 
 import (
 	"time"
@@ -21,10 +21,7 @@ func convPostProto(p *models.Post) (*pb.Post, error) {
 	if err != nil {
 		return nil, err
 	}
-	images, err := convListImageProto(p.Images)
-	if err != nil {
-		return nil, err
-	}
+
 	return &pb.Post{
 		Id:                p.ID,
 		Title:             p.Title,
@@ -36,41 +33,10 @@ func convPostProto(p *models.Post) (*pb.Post, error) {
 		MeetingAt:         mAt,
 		MaxApply:          p.MaxApply,
 		UserId:            p.UserID,
-		Images:            images,
 		CreatedAt:         cAt,
 		UpdatedAt:         uAt,
 	}, nil
 
-}
-
-func convImageProto(i *models.Image) (*pb.Image, error) {
-	cAt, err := ptypes.TimestampProto(i.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	uAt, err := ptypes.TimestampProto(i.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.Image{
-		Id:        i.ID,
-		Name:      i.Name,
-		PostId:    i.PostID,
-		CreatedAt: cAt,
-		UpdatedAt: uAt,
-	}, nil
-}
-
-func convListImageProto(list []*models.Image) ([]*pb.Image, error) {
-	listI := make([]*pb.Image, len(list))
-	for i, image := range list {
-		iProto, err := convImageProto(image)
-		if err != nil {
-			return nil, err
-		}
-		listI[i] = iProto
-	}
-	return listI, nil
 }
 
 func convListPostsProto(list []*models.Post) ([]*pb.Post, error) {

@@ -2,12 +2,12 @@ package interactor
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 
-	"github.com/ezio1119/fishapp-post/models"
+	"github.com/ezio1119/fishapp-post/pb"
 	"github.com/ezio1119/fishapp-post/usecase/interactor/saga"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type sagaReplyInteractor struct {
@@ -29,12 +29,16 @@ func (i *sagaReplyInteractor) RoomCreated(ctx context.Context, sagaID string) er
 	if err != nil {
 		return err
 	}
-	p := &models.Post{}
-	if err := json.Unmarshal(sagaIn.SagaData, p); err != nil {
+	p := &pb.Post{}
+	if err := protojson.Unmarshal(sagaIn.SagaData, p); err != nil {
 		return err
 	}
 
-	state := saga.NewCreatePostSagaState(p, sagaIn.CurrentState, sagaID)
+	state, err := saga.NewCreatePostSagaState(p, sagaIn.CurrentState, sagaID)
+	if err != nil {
+		return err
+	}
+
 	s := i.createPostSagaManager.NewCreatePostSagaManager(state)
 
 	if err := s.FSM.Event("ApprovePost", ctx); err != nil {
@@ -48,16 +52,23 @@ func (i *sagaReplyInteractor) RoomCreated(ctx context.Context, sagaID string) er
 }
 
 func (i *sagaReplyInteractor) CreateRoomFailed(ctx context.Context, sagaID string, errMsg string) error {
-	log.Printf("error: %s", errMsg)
+	log.Printf("error: %s\n", errMsg)
+
 	sagaIn, err := i.sagaInstanceRepo.GetSagaInstance(ctx, sagaID)
 	if err != nil {
 		return err
 	}
-	p := &models.Post{}
-	if err := json.Unmarshal(sagaIn.SagaData, p); err != nil {
+
+	p := &pb.Post{}
+	if err := protojson.Unmarshal(sagaIn.SagaData, p); err != nil {
 		return err
 	}
-	state := saga.NewCreatePostSagaState(p, sagaIn.CurrentState, sagaID)
+
+	state, err := saga.NewCreatePostSagaState(p, sagaIn.CurrentState, sagaID)
+	if err != nil {
+		return err
+	}
+
 	s := i.createPostSagaManager.NewCreatePostSagaManager(state)
 	if err := s.FSM.Event("RejectPost", ctx); err != nil {
 		return err
