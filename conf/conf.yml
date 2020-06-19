@@ -13,10 +13,7 @@ sv:
   port: 50051
   debug: true
   defaultPageSize: 10
-  localimagespath: /app/images/
-  imageheight: 800
-  imagewidth: 600
-
+  imagechunksize: 16384
 nats:
   url: "nats-streaming:4223"
   clusterid: fishapp-cluster

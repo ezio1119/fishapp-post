@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/ezio1119/fishapp-post/conf"
 	"github.com/ezio1119/fishapp-post/pb"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
 )
@@ -37,7 +38,7 @@ func (r *imageRepo) BatchCreateImages(ctx context.Context, pID int64, imageBufs 
 		}
 
 		for {
-			buf := make([]byte, 16384)
+			buf := make([]byte, conf.C.Sv.ImageChunkSize)
 			n, err := imageBuf.Read(buf)
 			if err == io.EOF {
 				break

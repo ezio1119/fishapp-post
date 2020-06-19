@@ -25,9 +25,7 @@ type config struct {
 		Port            string
 		Debug           bool
 		DefaultPageSize int64
-		LocalImagesPath string
-		ImageHeight     int
-		ImageWidth      int
+		ImageChunkSize  int64
 	}
 	Nats struct {
 		URL        string
