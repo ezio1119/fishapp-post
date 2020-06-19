@@ -229,50 +229,48 @@ func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBu
 }
 
 func (i *postInteractor) DeletePost(ctx context.Context, id int64) error {
-	// 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
-	// 	defer cancel()
+	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
+	defer cancel()
 
-	// 	p, err := i.postRepo.GetPostByID(ctx, id)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	p, err := i.postRepo.GetPostByID(ctx, id)
+	if err != nil {
+		return err
+	}
 
-	// 	event, err := newPostDeletedEvent(p)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	event, err := newPostDeletedEvent(p)
+	if err != nil {
+		return err
+	}
 
-	// 	ctx, err = i.transactionRepo.BeginTx(ctx)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	ctx, err = i.transactionRepo.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
 
-	// 	defer func() {
-	// 		if recover() != nil {
-	// 			i.transactionRepo.Roolback(ctx)
-	// 		}
-	// 	}()
+	defer func() {
+		if recover() != nil {
+			i.transactionRepo.Roolback(ctx)
+		}
+	}()
 
-	// 	if err := i.postRepo.DeletePost(ctx, id); err != nil {
-	// 		i.transactionRepo.Roolback(ctx)
-	// 		return err
-	// 	}
+	if err := i.postRepo.DeletePost(ctx, id); err != nil {
+		i.transactionRepo.Roolback(ctx)
+		return err
+	}
 
-	// 	if err := i.outboxRepo.CreateOutbox(ctx, event); err != nil {
-	// 		i.transactionRepo.Roolback(ctx)
-	// 		return err
-	// 	}
+	if err := i.outboxRepo.CreateOutbox(ctx, event); err != nil {
+		i.transactionRepo.Roolback(ctx)
+		return err
+	}
 
-	// 	ctx, err = i.transactionRepo.Commit(ctx)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	ctx, err = i.transactionRepo.Commit(ctx)
+	if err != nil {
+		return err
+	}
 
-	// 	for _, img := range p.Images {
-	// 		if err := i.imageUploaderRepo.DeleteUploadedImage(ctx, img.Name); err != nil {
-	// 			return err
-	// 		}
-	// 	}
+	if err := i.imageRepo.DeleteImagesByPostID(ctx, id); err != nil {
+		return err
+	}
 
 	return nil
 }

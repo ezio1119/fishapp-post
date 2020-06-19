@@ -17,7 +17,7 @@ func NewImageRepo(c pb.ImageServiceClient) repo.ImageRepo {
 	return &imageRepo{c}
 }
 
-func (r *imageRepo) BatchCreateImages(ctx context.Context, ownerID int64, imageBufs []*bytes.Buffer) error {
+func (r *imageRepo) BatchCreateImages(ctx context.Context, pID int64, imageBufs []*bytes.Buffer) error {
 	stream, err := r.client.BatchCreateImages(ctx)
 	if err != nil {
 		return err
@@ -27,7 +27,7 @@ func (r *imageRepo) BatchCreateImages(ctx context.Context, ownerID int64, imageB
 		req := &pb.BatchCreateImagesReq{
 			Data: &pb.BatchCreateImagesReq_Info{
 				Info: &pb.ImageInfo{
-					OwnerId:   ownerID,
+					OwnerId:   pID,
 					OwnerType: pb.OwnerType_POST,
 				},
 			}}
@@ -66,8 +66,18 @@ func (r *imageRepo) BatchCreateImages(ctx context.Context, ownerID int64, imageB
 }
 
 func (r *imageRepo) BatchDeleteImages(ctx context.Context, ids []int64) error {
-	_, err := r.client.BatchDeleteImages(ctx, &pb.BatchDeleteImagesReq{Ids: ids})
-	if err != nil {
+	if _, err := r.client.BatchDeleteImages(ctx, &pb.BatchDeleteImagesReq{Ids: ids}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *imageRepo) DeleteImagesByPostID(ctx context.Context, pID int64) error {
+	if _, err := r.client.DeleteImagesByOwnerID(ctx, &pb.DeleteImagesByOwnerIDReq{
+		OwnerId:   pID,
+		OwnerType: pb.OwnerType_POST,
+	}); err != nil {
 		return err
 	}
 

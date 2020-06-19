@@ -41,9 +41,11 @@ func (c *postController) ListPosts(ctx context.Context, in *pb.ListPostsReq) (*p
 		PrefectureID:      in.Filter.PrefectureId,
 		UserID:            in.Filter.UserId,
 	}, in.PageSize, in.PageToken, f)
+
 	if err != nil {
 		return nil, err
 	}
+
 	listProto, err := convListPostsProto(list)
 	if err != nil {
 		return nil, err
@@ -56,7 +58,7 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 	ctx := stream.Context()
 	p := &models.Post{}
 
-	imageBufs := []*bytes.Buffer{&bytes.Buffer{}}
+	imageBufs := []*bytes.Buffer{}
 
 	for {
 		req, err := stream.Recv()
@@ -83,6 +85,8 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 			p.MeetingAt = mAt
 			p.MaxApply = x.Info.MaxApply
 			p.UserID = x.Info.UserId
+
+			imageBufs = append(imageBufs, &bytes.Buffer{})
 
 		case *pb.CreatePostReq_ImageChunk:
 			lastBuf := imageBufs[len(imageBufs)-1]
@@ -183,6 +187,7 @@ func (c *postController) DeletePost(ctx context.Context, in *pb.DeletePostReq) (
 	if err := c.postInteractor.DeletePost(ctx, in.Id); err != nil {
 		return nil, err
 	}
+
 	return &empty.Empty{}, nil
 }
 
