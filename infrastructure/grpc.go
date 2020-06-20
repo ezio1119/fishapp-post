@@ -12,7 +12,7 @@ func NewGrpcServer(middL middleware.Middleware, postController pb.PostServiceSer
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 			middL.UnaryLogingInterceptor(),
-			middL.UnaryRecoveryInterceptor(),
+			// middL.UnaryRecoveryInterceptor(),
 			middL.UnaryValidationInterceptor(),
 		)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(

@@ -65,9 +65,11 @@ func (i *postInteractor) ListPosts(ctx context.Context, p *models.Post, pageSize
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()
 
+	fmt.Printf("post: %#v\npageSize: %#v\npageToken: %#v\nPostFilter: %#v\n", p, pageSize, pageToken, f)
 	if pageSize == 0 {
 		pageSize = conf.C.Sv.DefaultPageSize
 	}
+
 	pageSize++
 	var cursor int64
 	if pageToken != "" {

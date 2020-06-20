@@ -128,10 +128,12 @@ func (r *postRepo) fillListPostsWithFishTypes(ctx context.Context, posts []*mode
 	for i, p := range posts {
 		args[i] = p.ID
 	}
+
 	fishes, err := r.fetchPostsFishTypes(ctx, query, args...)
 	if err != nil {
 		return err
 	}
+
 	for _, p := range posts {
 		for _, f := range fishes {
 			if p.ID == f.PostID {
@@ -139,6 +141,7 @@ func (r *postRepo) fillListPostsWithFishTypes(ctx context.Context, posts []*mode
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -193,25 +196,6 @@ func (r *postRepo) deletePostsFishTypesByPostID(ctx context.Context, pID int64) 
 	defer stmt.Close()
 
 	if _, err = stmt.ExecContext(ctx, pID); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *postRepo) deleteImagesByPostID(ctx context.Context, pID int64) error {
-	query := "DELETE FROM images WHERE post_id = ?"
-	stmt, err := r.SqlHandler.PrepareContext(ctx, query)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	res, err := stmt.ExecContext(ctx, pID)
-	if err != nil {
-		return err
-	}
-	if _, err := res.RowsAffected(); err != nil {
 		return err
 	}
 
@@ -280,21 +264,26 @@ func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cur
 	if p.FishingSpotTypeID != 0 {
 		sq = sq.Where("fishing_spot_type_id = ?", p.FishingSpotTypeID)
 	}
+
 	if p.PrefectureID != 0 {
 		sq = sq.Where("prefecture_id = ?", p.PrefectureID)
 	}
+
 	if p.UserID != 0 {
 		sq = sq.Where("user_id = ?", p.UserID)
 	}
+
 	if f.CanApply {
 		sq = sq.LeftJoin("apply_posts ON posts.id = apply_posts.post_id").
 			Having("count(apply_posts.id) < posts.max_apply")
 	}
+
 	if f.FishTypeIDs != nil {
 		sq = sq.Join("posts_fish_types ON posts.id = posts_fish_types.post_id").
 			Where("posts_fish_types.fish_type_id IN(?)", f.FishTypeIDs).
 			Having("count(posts_fish_types.fish_type_id) = ?", len(f.FishTypeIDs))
 	}
+
 	if !f.MeetingAtFrom.IsZero() && !f.MeetingAtTo.IsZero() {
 		sq = sq.Where("meeting_at BETWEEN ? AND ?", f.MeetingAtFrom, f.MeetingAtTo)
 	}
@@ -302,36 +291,47 @@ func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cur
 	if cursor != 0 {
 		switch f.SortBy {
 		case models.SortByID:
+
 			if f.OrderBy == models.OrderByAsc {
 				sq = sq.Where("posts.id > ?", cursor).
 					OrderBy("id asc")
 			}
+
 			if f.OrderBy == models.OrderByDesc {
 				sq = sq.Where("posts.id < ?", cursor).
 					OrderBy("id desc")
 			}
 		// meeting_atはユニークではないため、同じ値の場合を考えidでも絞り込む
 		case models.SortByMeetingAt:
+
 			p, err := r.GetPostByID(ctx, cursor)
 			if err != nil {
 				return nil, err
 			}
+
 			switch f.OrderBy {
 			case models.OrderByAsc:
+
 				sq = sq.Where("meeting_at >= ?", p.MeetingAt).
 					Where("meeting_at > ? or posts.id > ?", p.MeetingAt, cursor).
 					OrderBy("meeting_at asc, id asc")
+
 			case models.OrderByDesc:
+
 				sq = sq.Where("meeting_at <= ?", p.MeetingAt).
 					Where("meeting_at < ? or posts.id < ?", p.MeetingAt, cursor).
 					OrderBy("meeting_at desc, id desc")
+
 			}
 		}
 	}
+
 	if cursor == 0 {
 		sq = sq.OrderBy(fmt.Sprintf("%s %s", f.SortBy, f.OrderBy))
 	}
+
 	query, args, err := sq.ToSql()
+	fmt.Println(query)
 	if err != nil {
 		return nil, err
 	}
@@ -341,8 +341,10 @@ func (r *postRepo) ListPosts(ctx context.Context, p *models.Post, num int64, cur
 		return nil, err
 	}
 
-	if err := r.fillListPostsWithFishTypes(ctx, posts); err != nil {
-		return nil, err
+	if len(posts) != 0 {
+		if err := r.fillListPostsWithFishTypes(ctx, posts); err != nil {
+			return nil, err
+		}
 	}
 
 	return posts, nil
@@ -377,10 +379,6 @@ func (r *postRepo) UpdatePost(ctx context.Context, p *models.Post) error {
 	}
 
 	if err := r.batchCreatePostsFishTypes(ctx, p); err != nil {
-		return err
-	}
-
-	if err := r.deleteImagesByPostID(ctx, p.ID); err != nil {
 		return err
 	}
 
