@@ -2,14 +2,12 @@ package saga
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/ezio1119/fishapp-post/models"
 	"github.com/ezio1119/fishapp-post/pb"
 	"github.com/ezio1119/fishapp-post/usecase/repo"
-	"github.com/google/uuid"
 	"github.com/looplab/fsm"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -51,12 +49,12 @@ func (s *createPostSagaState) convSagaInstance(state string) (*models.SagaInstan
 }
 
 type CreatePostSagaManager struct {
-	FSM                 *fsm.FSM
-	createPostSagaState *createPostSagaState
-	outboxRepo          repo.OutboxRepo
-	postRepo            repo.PostRepo
-	sagaInstanceRepo    repo.SagaInstanceRepo
-	transactionRepo     repo.TransactionRepo
+	FSM              *fsm.FSM
+	state            *createPostSagaState
+	outboxRepo       repo.OutboxRepo
+	postRepo         repo.PostRepo
+	sagaInstanceRepo repo.SagaInstanceRepo
+	transactionRepo  repo.TransactionRepo
 }
 
 func InitCreatePostSagaManager(
@@ -66,16 +64,16 @@ func InitCreatePostSagaManager(
 	tr repo.TransactionRepo,
 ) *CreatePostSagaManager {
 	return &CreatePostSagaManager{
-		outboxRepo:        or,
-		postRepo:          pr,
-		sagaInstanceRepo:  sr,
-		transactionRepo:   tr,
+		outboxRepo:       or,
+		postRepo:         pr,
+		sagaInstanceRepo: sr,
+		transactionRepo:  tr,
 	}
 }
 
 func (m *CreatePostSagaManager) NewCreatePostSagaManager(state *createPostSagaState) *CreatePostSagaManager {
 
-	m.createPostSagaState = state
+	m.state = state
 
 	m.FSM = fsm.NewFSM(
 		"init",
@@ -93,7 +91,7 @@ func (m *CreatePostSagaManager) NewCreatePostSagaManager(state *createPostSagaSt
 		},
 	)
 
-	m.FSM.SetState(m.createPostSagaState.currentState)
+	m.FSM.SetState(m.state.currentState)
 
 	return m
 }
@@ -105,16 +103,16 @@ func (m *CreatePostSagaManager) createRoom(e *fsm.Event) {
 		return
 	}
 	// 遷移先のステートを入れる
-	sagaIn, err := m.createPostSagaState.convSagaInstance(e.Dst)
+	sagaIn, err := m.state.convSagaInstance(e.Dst)
 	if err != nil {
 		e.Cancel(err)
 		return
 	}
 
 	event, err := newCreateRoomEvent(&pb.CreateRoom{
-		SagaId: m.createPostSagaState.sagaID,
-		PostId: m.createPostSagaState.post.Id,
-		UserId: m.createPostSagaState.post.UserId,
+		SagaId: m.state.sagaID,
+		PostId: m.state.post.Id,
+		UserId: m.state.post.UserId,
 	})
 	if err != nil {
 		e.Cancel(err)
@@ -151,7 +149,7 @@ func (m *CreatePostSagaManager) createRoom(e *fsm.Event) {
 		return
 	}
 	// e.Cancel(errors.New("errorおきたよ"))
-	m.createPostSagaState.currentState = e.Dst
+	m.state.currentState = e.Dst
 }
 
 func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
@@ -160,25 +158,29 @@ func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
 		e.Cancel(errors.New("missing context"))
 		return
 	}
-	jsonPost, err := json.Marshal(m.createPostSagaState.post)
+
+	errMsg, ok := e.Args[1].(string)
+	if !ok {
+		e.Cancel(errors.New("missing error message"))
+		return
+	}
+
+	event, err := newPostRejectedEvent(m.state.post, m.state.sagaID, errMsg)
+	if err != nil {
+		e.Cancel(err)
+		return
+	}
+
+	jsonPost, err := protojson.Marshal(m.state.post)
 	if err != nil {
 		e.Cancel(err)
 		return
 	}
 
 	now := time.Now()
-	event := &models.Outbox{
-		ID:        uuid.New().String(),
-		EventType: "post.rejected",
-		EventData: jsonPost,
-		Channel:   "post.rejected",
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-
 	sagaIn := &models.SagaInstance{
-		ID:           m.createPostSagaState.sagaID,
-		SagaType:     m.createPostSagaState.sagaType,
+		ID:           m.state.sagaID,
+		SagaType:     m.state.sagaType,
 		SagaData:     jsonPost,
 		CurrentState: e.Dst,
 		CreatedAt:    now,
@@ -198,7 +200,7 @@ func (m *CreatePostSagaManager) rejectPost(e *fsm.Event) {
 		}
 	}()
 
-	if err := m.postRepo.DeletePost(ctx, m.createPostSagaState.post.Id); err != nil {
+	if err := m.postRepo.DeletePost(ctx, m.state.post.Id); err != nil {
 		m.transactionRepo.Roolback(ctx)
 		e.Cancel(err)
 		return
@@ -229,25 +231,22 @@ func (m *CreatePostSagaManager) approvePost(e *fsm.Event) {
 		e.Cancel(errors.New("missing context"))
 		return
 	}
-	jsonPost, err := protojson.Marshal(m.createPostSagaState.post)
+
+	event, err := newPostApprovedEvent(m.state.post, m.state.sagaID)
 	if err != nil {
 		e.Cancel(err)
 		return
 	}
 
-	now := time.Now()
-	event := &models.Outbox{
-		ID:        uuid.New().String(),
-		EventType: "post.approved",
-		EventData: jsonPost,
-		Channel:   "post.approved",
-		CreatedAt: now,
-		UpdatedAt: now,
+	jsonPost, err := protojson.Marshal(m.state.post)
+	if err != nil {
+		e.Cancel(err)
+		return
 	}
 
 	sagaIn := &models.SagaInstance{
-		ID:           m.createPostSagaState.sagaID,
-		SagaType:     m.createPostSagaState.sagaType,
+		ID:           m.state.sagaID,
+		SagaType:     m.state.sagaType,
 		SagaData:     jsonPost,
 		CurrentState: e.Dst,
 		UpdatedAt:    time.Now(),
@@ -283,5 +282,5 @@ func (m *CreatePostSagaManager) approvePost(e *fsm.Event) {
 		return
 	}
 
-	m.createPostSagaState.currentState = e.Dst
+	m.state.currentState = e.Dst
 }

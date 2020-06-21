@@ -350,6 +350,124 @@ func (x *PostDeleted) GetPost() *Post {
 	return nil
 }
 
+type PostRejected struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SagaId       string `protobuf:"bytes,1,opt,name=saga_id,json=sagaId,proto3" json:"saga_id,omitempty"`
+	Post         *Post  `protobuf:"bytes,2,opt,name=post,proto3" json:"post,omitempty"`
+	ErrorMessage string `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+}
+
+func (x *PostRejected) Reset() {
+	*x = PostRejected{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_event_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PostRejected) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PostRejected) ProtoMessage() {}
+
+func (x *PostRejected) ProtoReflect() protoreflect.Message {
+	mi := &file_event_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PostRejected.ProtoReflect.Descriptor instead.
+func (*PostRejected) Descriptor() ([]byte, []int) {
+	return file_event_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *PostRejected) GetSagaId() string {
+	if x != nil {
+		return x.SagaId
+	}
+	return ""
+}
+
+func (x *PostRejected) GetPost() *Post {
+	if x != nil {
+		return x.Post
+	}
+	return nil
+}
+
+func (x *PostRejected) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+type PostApproved struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SagaId string `protobuf:"bytes,1,opt,name=saga_id,json=sagaId,proto3" json:"saga_id,omitempty"`
+	Post   *Post  `protobuf:"bytes,2,opt,name=post,proto3" json:"post,omitempty"`
+}
+
+func (x *PostApproved) Reset() {
+	*x = PostApproved{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_event_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PostApproved) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PostApproved) ProtoMessage() {}
+
+func (x *PostApproved) ProtoReflect() protoreflect.Message {
+	mi := &file_event_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PostApproved.ProtoReflect.Descriptor instead.
+func (*PostApproved) Descriptor() ([]byte, []int) {
+	return file_event_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *PostApproved) GetSagaId() string {
+	if x != nil {
+		return x.SagaId
+	}
+	return ""
+}
+
+func (x *PostApproved) GetPost() *Post {
+	if x != nil {
+		return x.Post
+	}
+	return nil
+}
+
 type ApplyPostCreated struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -361,7 +479,7 @@ type ApplyPostCreated struct {
 func (x *ApplyPostCreated) Reset() {
 	*x = ApplyPostCreated{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_event_proto_msgTypes[5]
+		mi := &file_event_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -374,7 +492,7 @@ func (x *ApplyPostCreated) String() string {
 func (*ApplyPostCreated) ProtoMessage() {}
 
 func (x *ApplyPostCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_event_proto_msgTypes[5]
+	mi := &file_event_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -387,7 +505,7 @@ func (x *ApplyPostCreated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyPostCreated.ProtoReflect.Descriptor instead.
 func (*ApplyPostCreated) Descriptor() ([]byte, []int) {
-	return file_event_proto_rawDescGZIP(), []int{5}
+	return file_event_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ApplyPostCreated) GetApplyPost() *ApplyPost {
@@ -408,7 +526,7 @@ type ApplyPostDeleted struct {
 func (x *ApplyPostDeleted) Reset() {
 	*x = ApplyPostDeleted{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_event_proto_msgTypes[6]
+		mi := &file_event_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -421,7 +539,7 @@ func (x *ApplyPostDeleted) String() string {
 func (*ApplyPostDeleted) ProtoMessage() {}
 
 func (x *ApplyPostDeleted) ProtoReflect() protoreflect.Message {
-	mi := &file_event_proto_msgTypes[6]
+	mi := &file_event_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -434,7 +552,7 @@ func (x *ApplyPostDeleted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyPostDeleted.ProtoReflect.Descriptor instead.
 func (*ApplyPostDeleted) Descriptor() ([]byte, []int) {
-	return file_event_proto_rawDescGZIP(), []int{6}
+	return file_event_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ApplyPostDeleted) GetApplyPost() *ApplyPost {
@@ -491,16 +609,27 @@ var file_event_proto_rawDesc = []byte{
 	0x49, 0x64, 0x22, 0x2d, 0x0a, 0x0b, 0x50, 0x6f, 0x73, 0x74, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
 	0x64, 0x12, 0x1e, 0x0a, 0x04, 0x70, 0x6f, 0x73, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
 	0x0a, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x2e, 0x50, 0x6f, 0x73, 0x74, 0x52, 0x04, 0x70, 0x6f, 0x73,
-	0x74, 0x22, 0x42, 0x0a, 0x10, 0x41, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73, 0x74, 0x43, 0x72,
-	0x65, 0x61, 0x74, 0x65, 0x64, 0x12, 0x2e, 0x0a, 0x0a, 0x61, 0x70, 0x70, 0x6c, 0x79, 0x5f, 0x70,
-	0x6f, 0x73, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x6f, 0x73, 0x74,
-	0x2e, 0x41, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73, 0x74, 0x52, 0x09, 0x61, 0x70, 0x70, 0x6c,
-	0x79, 0x50, 0x6f, 0x73, 0x74, 0x22, 0x42, 0x0a, 0x10, 0x41, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f,
-	0x73, 0x74, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x12, 0x2e, 0x0a, 0x0a, 0x61, 0x70, 0x70,
-	0x6c, 0x79, 0x5f, 0x70, 0x6f, 0x73, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e,
-	0x70, 0x6f, 0x73, 0x74, 0x2e, 0x41, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73, 0x74, 0x52, 0x09,
-	0x61, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73, 0x74, 0x42, 0x06, 0x5a, 0x04, 0x2e, 0x3b, 0x70,
-	0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x22, 0x6c, 0x0a, 0x0c, 0x50, 0x6f, 0x73, 0x74, 0x52, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65,
+	0x64, 0x12, 0x17, 0x0a, 0x07, 0x73, 0x61, 0x67, 0x61, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x73, 0x61, 0x67, 0x61, 0x49, 0x64, 0x12, 0x1e, 0x0a, 0x04, 0x70, 0x6f,
+	0x73, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0a, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x2e,
+	0x50, 0x6f, 0x73, 0x74, 0x52, 0x04, 0x70, 0x6f, 0x73, 0x74, 0x12, 0x23, 0x0a, 0x0d, 0x65, 0x72,
+	0x72, 0x6f, 0x72, 0x5f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0c, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x22,
+	0x47, 0x0a, 0x0c, 0x50, 0x6f, 0x73, 0x74, 0x41, 0x70, 0x70, 0x72, 0x6f, 0x76, 0x65, 0x64, 0x12,
+	0x17, 0x0a, 0x07, 0x73, 0x61, 0x67, 0x61, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x73, 0x61, 0x67, 0x61, 0x49, 0x64, 0x12, 0x1e, 0x0a, 0x04, 0x70, 0x6f, 0x73, 0x74,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0a, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x2e, 0x50, 0x6f,
+	0x73, 0x74, 0x52, 0x04, 0x70, 0x6f, 0x73, 0x74, 0x22, 0x42, 0x0a, 0x10, 0x41, 0x70, 0x70, 0x6c,
+	0x79, 0x50, 0x6f, 0x73, 0x74, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x12, 0x2e, 0x0a, 0x0a,
+	0x61, 0x70, 0x70, 0x6c, 0x79, 0x5f, 0x70, 0x6f, 0x73, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x0f, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x2e, 0x41, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73,
+	0x74, 0x52, 0x09, 0x61, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73, 0x74, 0x22, 0x42, 0x0a, 0x10,
+	0x41, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73, 0x74, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64,
+	0x12, 0x2e, 0x0a, 0x0a, 0x61, 0x70, 0x70, 0x6c, 0x79, 0x5f, 0x70, 0x6f, 0x73, 0x74, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x2e, 0x41, 0x70, 0x70, 0x6c,
+	0x79, 0x50, 0x6f, 0x73, 0x74, 0x52, 0x09, 0x61, 0x70, 0x70, 0x6c, 0x79, 0x50, 0x6f, 0x73, 0x74,
+	0x42, 0x06, 0x5a, 0x04, 0x2e, 0x3b, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -515,32 +644,36 @@ func file_event_proto_rawDescGZIP() []byte {
 	return file_event_proto_rawDescData
 }
 
-var file_event_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_event_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_event_proto_goTypes = []interface{}{
 	(*Event)(nil),               // 0: event.Event
 	(*RoomCreated)(nil),         // 1: event.RoomCreated
 	(*CreateRoomFailed)(nil),    // 2: event.CreateRoomFailed
 	(*CreateRoom)(nil),          // 3: event.CreateRoom
 	(*PostDeleted)(nil),         // 4: event.PostDeleted
-	(*ApplyPostCreated)(nil),    // 5: event.ApplyPostCreated
-	(*ApplyPostDeleted)(nil),    // 6: event.ApplyPostDeleted
-	(*timestamp.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*Room)(nil),                // 8: chat.Room
-	(*Post)(nil),                // 9: post.Post
-	(*ApplyPost)(nil),           // 10: post.ApplyPost
+	(*PostRejected)(nil),        // 5: event.PostRejected
+	(*PostApproved)(nil),        // 6: event.PostApproved
+	(*ApplyPostCreated)(nil),    // 7: event.ApplyPostCreated
+	(*ApplyPostDeleted)(nil),    // 8: event.ApplyPostDeleted
+	(*timestamp.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(*Room)(nil),                // 10: chat.Room
+	(*Post)(nil),                // 11: post.Post
+	(*ApplyPost)(nil),           // 12: post.ApplyPost
 }
 var file_event_proto_depIdxs = []int32{
-	7,  // 0: event.Event.created_at:type_name -> google.protobuf.Timestamp
-	7,  // 1: event.Event.updated_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: event.RoomCreated.room:type_name -> chat.Room
-	9,  // 3: event.PostDeleted.post:type_name -> post.Post
-	10, // 4: event.ApplyPostCreated.apply_post:type_name -> post.ApplyPost
-	10, // 5: event.ApplyPostDeleted.apply_post:type_name -> post.ApplyPost
-	6,  // [6:6] is the sub-list for method output_type
-	6,  // [6:6] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	9,  // 0: event.Event.created_at:type_name -> google.protobuf.Timestamp
+	9,  // 1: event.Event.updated_at:type_name -> google.protobuf.Timestamp
+	10, // 2: event.RoomCreated.room:type_name -> chat.Room
+	11, // 3: event.PostDeleted.post:type_name -> post.Post
+	11, // 4: event.PostRejected.post:type_name -> post.Post
+	11, // 5: event.PostApproved.post:type_name -> post.Post
+	12, // 6: event.ApplyPostCreated.apply_post:type_name -> post.ApplyPost
+	12, // 7: event.ApplyPostDeleted.apply_post:type_name -> post.ApplyPost
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_event_proto_init() }
@@ -612,7 +745,7 @@ func file_event_proto_init() {
 			}
 		}
 		file_event_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ApplyPostCreated); i {
+			switch v := v.(*PostRejected); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -624,6 +757,30 @@ func file_event_proto_init() {
 			}
 		}
 		file_event_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*PostApproved); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_event_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ApplyPostCreated); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_event_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ApplyPostDeleted); i {
 			case 0:
 				return &v.state
@@ -642,7 +799,7 @@ func file_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_event_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

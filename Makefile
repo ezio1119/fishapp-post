@@ -35,6 +35,9 @@ test:
 up:
 	$(DC) up -d
 
+updb:
+	$(DC) up -d post-db
+
 ps:
 	$(DC) ps
 
@@ -43,9 +46,6 @@ build:
 
 down:
 	$(DC) down
-
-stop:
-	$(DC) stop
 
 exec:
 	$(DC) exec $(API) sh

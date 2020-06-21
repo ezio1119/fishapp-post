@@ -26,18 +26,46 @@ func newCreateRoomEvent(c *pb.CreateRoom) (*models.Outbox, error) {
 	}, nil
 }
 
-func newPostApprovedEvent(p *pb.Post) (*models.Outbox, error) {
-	jsonPost, err := protojson.Marshal(p)
+func newPostApprovedEvent(p *pb.Post, sagaID string) (*models.Outbox, error) {
+	postApproved := &pb.PostApproved{
+		SagaId: sagaID,
+		Post:   p,
+	}
+
+	jsonEvent, err := protojson.Marshal(postApproved)
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now()
 
+	now := time.Now()
 	return &models.Outbox{
 		ID:        uuid.New().String(),
 		EventType: "post.approved",
-		EventData: jsonPost,
-		Channel:   "post.approved",
+		EventData: jsonEvent,
+		Channel:   "create.post.result",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil
+}
+
+func newPostRejectedEvent(p *pb.Post, sagaID string, errMsg string) (*models.Outbox, error) {
+	postRejected := &pb.PostRejected{
+		SagaId:       sagaID,
+		Post:         p,
+		ErrorMessage: errMsg,
+	}
+
+	jsonEvent, err := protojson.Marshal(postRejected)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	return &models.Outbox{
+		ID:        uuid.New().String(),
+		EventType: "post.rejected",
+		EventData: jsonEvent,
+		Channel:   "create.post.result",
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, nil

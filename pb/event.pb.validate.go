@@ -433,6 +433,162 @@ var _ interface {
 	ErrorName() string
 } = PostDeletedValidationError{}
 
+// Validate checks the field values on PostRejected with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *PostRejected) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for SagaId
+
+	if v, ok := interface{}(m.GetPost()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return PostRejectedValidationError{
+				field:  "Post",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for ErrorMessage
+
+	return nil
+}
+
+// PostRejectedValidationError is the validation error returned by
+// PostRejected.Validate if the designated constraints aren't met.
+type PostRejectedValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e PostRejectedValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e PostRejectedValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e PostRejectedValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e PostRejectedValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e PostRejectedValidationError) ErrorName() string { return "PostRejectedValidationError" }
+
+// Error satisfies the builtin error interface
+func (e PostRejectedValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sPostRejected.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = PostRejectedValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = PostRejectedValidationError{}
+
+// Validate checks the field values on PostApproved with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *PostApproved) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for SagaId
+
+	if v, ok := interface{}(m.GetPost()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return PostApprovedValidationError{
+				field:  "Post",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// PostApprovedValidationError is the validation error returned by
+// PostApproved.Validate if the designated constraints aren't met.
+type PostApprovedValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e PostApprovedValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e PostApprovedValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e PostApprovedValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e PostApprovedValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e PostApprovedValidationError) ErrorName() string { return "PostApprovedValidationError" }
+
+// Error satisfies the builtin error interface
+func (e PostApprovedValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sPostApproved.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = PostApprovedValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = PostApprovedValidationError{}
+
 // Validate checks the field values on ApplyPostCreated with the rules defined
 // in the proto definition for this message. If any rules are violated, an
 // error is returned.

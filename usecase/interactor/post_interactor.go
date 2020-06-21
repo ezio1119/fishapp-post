@@ -128,11 +128,13 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 		return "", err
 	}
 
-	if err := i.imageRepo.BatchCreateImages(ctx, p.ID, imageBufs); err != nil {
-		if err := i.postRepo.DeletePost(ctx, p.ID); err != nil {
+	if len(imageBufs) != 0 {
+		if err := i.imageRepo.BatchCreateImages(ctx, p.ID, imageBufs); err != nil {
+			if err := i.postRepo.DeletePost(ctx, p.ID); err != nil {
+				return "", err
+			}
 			return "", err
 		}
-		return "", err
 	}
 
 	sagaID := uuid.New().String()
@@ -156,7 +158,7 @@ func (i *postInteractor) CreatePost(ctx context.Context, p *models.Post, imageBu
 	return sagaID, nil
 }
 
-// imageBufsは新しいイメージ、existsImageIDsはアップロード済みの画像で、そのまま残すIDs
+// imageBufsは新しいイメージ、deleteImageIDsは消すimageのID
 func (i *postInteractor) UpdatePost(ctx context.Context, p *models.Post, imageBufs []*bytes.Buffer, dltImageIDs []int64) error {
 	ctx, cancel := context.WithTimeout(ctx, i.ctxTimeout)
 	defer cancel()

@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"context"
+
 	"github.com/ezio1119/fishapp-post/conf"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"google.golang.org/grpc"
@@ -9,27 +11,39 @@ import (
 )
 
 func (*middleware) UnaryRecoveryInterceptor() grpc.UnaryServerInterceptor {
+	if conf.C.Sv.Debug {
+		return emptyUnalyIntercepter()
+	}
+
 	customFunc := func(p interface{}) (err error) {
 		return status.Errorf(codes.Internal, "panic triggered: %v", p)
 	}
 	// Shared options for the logger, with a custom gRPC code to log level function.
-	opts := []grpc_recovery.Option{}
 
-	if !conf.C.Sv.Debug {
-		opts = append(opts, grpc_recovery.WithRecoveryHandler(customFunc))
-	}
-	return grpc_recovery.UnaryServerInterceptor(opts...)
+	return grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(customFunc))
 }
 
 func (*middleware) StreamRecoveryInterceptor() grpc.StreamServerInterceptor {
+	if conf.C.Sv.Debug {
+		return emptyStreamIntercepter()
+	}
+
 	customFunc := func(p interface{}) (err error) {
 		return status.Errorf(codes.Internal, "panic triggered: %v", p)
 	}
 	// Shared options for the logger, with a custom gRPC code to log level function.
-	opts := []grpc_recovery.Option{}
 
-	if !conf.C.Sv.Debug {
-		opts = append(opts, grpc_recovery.WithRecoveryHandler(customFunc))
-	}
-	return grpc_recovery.StreamServerInterceptor(opts...)
+	return grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(customFunc))
+}
+
+func emptyStreamIntercepter() grpc.StreamServerInterceptor {
+	return grpc.StreamServerInterceptor(func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		return handler(srv, ss)
+	})
+}
+
+func emptyUnalyIntercepter() grpc.UnaryServerInterceptor {
+	return grpc.UnaryServerInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		return handler(ctx, req)
+	})
 }

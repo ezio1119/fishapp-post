@@ -71,6 +71,7 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 
 		switch x := req.Data.(type) {
 		case *pb.CreatePostReq_Info:
+
 			mAt, err := ptypes.Timestamp(x.Info.MeetingAt)
 			if err != nil {
 				return err
@@ -86,9 +87,12 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 			p.MaxApply = x.Info.MaxApply
 			p.UserID = x.Info.UserId
 
-			imageBufs = append(imageBufs, &bytes.Buffer{})
-
 		case *pb.CreatePostReq_ImageChunk:
+
+			if len(imageBufs) == 0 {
+				imageBufs = append(imageBufs, &bytes.Buffer{})
+			}
+
 			lastBuf := imageBufs[len(imageBufs)-1]
 
 			if _, err := lastBuf.Write(x.ImageChunk); err != nil {
@@ -96,6 +100,7 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 			}
 
 		case *pb.CreatePostReq_NextImageSignal:
+
 			imageBufs = append(imageBufs, &bytes.Buffer{})
 
 		default:
@@ -107,6 +112,7 @@ func (c *postController) CreatePost(stream pb.PostService_CreatePostServer) erro
 	if err != nil {
 		return err
 	}
+
 	pProto, err := convPostProto(p)
 	if err != nil {
 		return err
@@ -136,6 +142,7 @@ func (c *postController) UpdatePost(stream pb.PostService_UpdatePostServer) erro
 
 		switch x := req.Data.(type) {
 		case *pb.UpdatePostReq_Info:
+
 			mAt, err := ptypes.Timestamp(x.Info.MeetingAt)
 			if err != nil {
 				return err
@@ -152,9 +159,12 @@ func (c *postController) UpdatePost(stream pb.PostService_UpdatePostServer) erro
 			p.MaxApply = x.Info.MaxApply
 			dltImageIDs = x.Info.ImageIdsToDelete
 
-			imageBufs = append(imageBufs, &bytes.Buffer{})
-
 		case *pb.UpdatePostReq_ImageChunk:
+
+			if len(imageBufs) == 0 {
+				imageBufs = append(imageBufs, &bytes.Buffer{})
+			}
+
 			lastBuf := imageBufs[len(imageBufs)-1]
 
 			if _, err := lastBuf.Write(x.ImageChunk); err != nil {
@@ -162,6 +172,7 @@ func (c *postController) UpdatePost(stream pb.PostService_UpdatePostServer) erro
 			}
 
 		case *pb.UpdatePostReq_NextImageSignal:
+
 			imageBufs = append(imageBufs, &bytes.Buffer{})
 
 		default:

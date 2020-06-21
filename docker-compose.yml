@@ -18,13 +18,10 @@ services:
       target: dev
     volumes:
       - .:/app
-      - ~/Downloads/fishapp-279608-ca691d887e0d.json:/fishapp-279608-ca691d887e0d.json
-      - ./images:/images
     depends_on:
       - post-db
     environment:
       TZ: Asia/Tokyo
-      GOOGLE_APPLICATION_CREDENTIALS: /fishapp-279608-ca691d887e0d.json
 
 volumes:
   post-data:

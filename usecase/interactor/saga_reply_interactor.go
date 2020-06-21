@@ -70,7 +70,7 @@ func (i *sagaReplyInteractor) CreateRoomFailed(ctx context.Context, sagaID strin
 	}
 
 	s := i.createPostSagaManager.NewCreatePostSagaManager(state)
-	if err := s.FSM.Event("RejectPost", ctx); err != nil {
+	if err := s.FSM.Event("RejectPost", ctx, errMsg); err != nil {
 		return err
 	}
 

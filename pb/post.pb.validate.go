@@ -512,7 +512,13 @@ func (m *CreatePostReq) Validate() error {
 		}
 
 	case *CreatePostReq_ImageChunk:
-		// no validation rules for ImageChunk
+
+		if len(m.GetImageChunk()) > 65536 {
+			return CreatePostReqValidationError{
+				field:  "ImageChunk",
+				reason: "value length must be at most 65536 bytes",
+			}
+		}
 
 	default:
 		return CreatePostReqValidationError{
@@ -929,6 +935,36 @@ func (m *UpdatePostReqInfo) Validate() error {
 			field:  "MaxApply",
 			reason: "value must be greater than or equal to 1",
 		}
+	}
+
+	if len(m.GetImageIdsToDelete()) < 1 {
+		return UpdatePostReqInfoValidationError{
+			field:  "ImageIdsToDelete",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
+	_UpdatePostReqInfo_ImageIdsToDelete_Unique := make(map[int64]struct{}, len(m.GetImageIdsToDelete()))
+
+	for idx, item := range m.GetImageIdsToDelete() {
+		_, _ = idx, item
+
+		if _, exists := _UpdatePostReqInfo_ImageIdsToDelete_Unique[item]; exists {
+			return UpdatePostReqInfoValidationError{
+				field:  fmt.Sprintf("ImageIdsToDelete[%v]", idx),
+				reason: "repeated value must contain unique items",
+			}
+		} else {
+			_UpdatePostReqInfo_ImageIdsToDelete_Unique[item] = struct{}{}
+		}
+
+		if item < 1 {
+			return UpdatePostReqInfoValidationError{
+				field:  fmt.Sprintf("ImageIdsToDelete[%v]", idx),
+				reason: "value must be greater than or equal to 1",
+			}
+		}
+
 	}
 
 	return nil

@@ -15,6 +15,7 @@ import (
 func NewNatsStreamingConn() (stan.Conn, error) {
 	clientID := uuid.New().String()
 	log.Printf("nats clientID is %s", clientID)
+
 	return stan.Connect(conf.C.Nats.ClusterID, "fishapp-post-"+clientID, stan.NatsURL(conf.C.Nats.URL))
 }
 

@@ -69,7 +69,7 @@ func newPostDeletedEvent(p *models.Post) (*models.Outbox, error) {
 		return nil, err
 	}
 
-	eventData, err := protojson.Marshal(pPost)
+	eventData, err := protojson.Marshal(&pb.PostDeleted{Post: pPost})
 	if err != nil {
 		return nil, err
 	}
