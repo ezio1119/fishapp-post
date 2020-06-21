@@ -48,7 +48,7 @@ test:
 	go tool cover -html=cover.out -o ./cover.html" && \
 	open ./src/cover.html
 
-up: waitdb waitnats
+up: migrate waitnats
 	docker-compose up -d $(SVC)
 
 updb:
