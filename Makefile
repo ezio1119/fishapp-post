@@ -31,11 +31,11 @@ cli:
 
 waitdb: updb
 	docker run --rm --name dockerize --net $(NET) jwilder/dockerize \
+	-timeout 20s \
 	-wait tcp://$(DB_SVC):3306
 
 waitnats:
 	docker run --rm --name dockerize --net $(NET) jwilder/dockerize \
-	-timeout 20s \
 	-wait tcp://$(NATS_URL)
 
 migrate: waitdb
