@@ -9,12 +9,12 @@ NATS_URL = nats-streaming:4223
 NET = fishapp-net
 PJT_NAME = $(notdir $(PWD))
 
-sqldoc:
-	docker run --rm --net $(NET) -v $(CWD)/db:/work ezio1119/tbls \
-	doc -f -t svg mysql://$(DB_USER):$(DB_PWD)@$(DB_SVC)-db:3306/$(DB_NAME) ./
+sqldoc: migrate
+	docker run --rm --name tbls --net $(NET) -v $(CWD)/db:/work ezio1119/tbls \
+	doc -f -t svg mysql://$(DB_USER):$(DB_PWD)@$(DB_SVC):3306/$(DB_NAME) ./
 
 proto:
-	docker run --rm -v $(CWD)/pb:/pb -v $(CWD)/schema:/proto ezio1119/protoc \
+	docker run --rm --name protoc -v $(CWD)/pb:/pb -v $(CWD)/schema:/proto ezio1119/protoc \
 	-I/proto \
 	-I/go/src/github.com/envoyproxy/protoc-gen-validate \
 	--go_out=plugins=grpc:/pb \

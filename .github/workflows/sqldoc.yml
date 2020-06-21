@@ -1,0 +1,15 @@
+name: Generate SQL Document
+
+on:
+  push:
+    paths:
+    - 'db/sql/**'
+
+
+jobs:
+  gen-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: gen-doc 
+        run: make sqldoc a=up
