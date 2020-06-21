@@ -5,11 +5,14 @@ on:
     paths:
     - 'db/sql/**'
 
-
 jobs:
   gen-doc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: create-network
+        run: make createnet
+
       - name: gen-doc 
         run: make sqldoc a=up

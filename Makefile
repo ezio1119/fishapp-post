@@ -8,6 +8,10 @@ DB_VOL_NAME = post-data
 NATS_URL = nats-streaming:4223
 NET = fishapp-net
 PJT_NAME = $(notdir $(PWD))
+TEST = $(shell docker inspect $(NET) > /dev/null 2>&1; echo " $$?")
+
+createnet:
+	docker network create $(NET)
 
 sqldoc: migrate
 	docker run --rm --name tbls --net $(NET) -v $(CWD)/db:/work ezio1119/tbls \
