@@ -55,7 +55,7 @@ waitnats:
 migrate: waitdb
 	docker run --rm --name migrate --net $(NET) \
 	-v $(CWD)/db/sql:/sql migrate/migrate:latest \
-	-path /sql/ -database "mysql://$(DB_USER):$(DB_PWD)@tcp($(DB_SVC):3306)/$(DB_NAME)" ${a}
+	-path /sql/ -database "mysql://$(DB_USER):$(DB_PWD)@tcp($(DB_SVC):3306)/$(DB_NAME)" ${MIGRATE}
 
 up: migrate waitimage waitnats
 	docker-compose up -d $(SVC)
