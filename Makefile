@@ -4,11 +4,10 @@ DB_SVC = post-db
 DB_NAME = post_DB
 DB_USER = root
 DB_PWD = password
-DB_VOL_NAME = post-data
 NATS_URL = nats-streaming:4223
 NET = fishapp-net
 PJT_NAME = $(notdir $(PWD))
-TEST = $(shell docker inspect $(NET) > /dev/null 2>&1; echo " $$?")
+# TEST = $(shell docker inspect $(NET) > /dev/null 2>&1; echo " $$?")
 
 createnet:
 	docker network create $(NET)
@@ -31,7 +30,7 @@ cli:
 
 waitdb: updb
 	docker run --rm --name dockerize --net $(NET) jwilder/dockerize \
-	-timeout 20s \
+	-timeout 30s \
 	-wait tcp://$(DB_SVC):3306
 
 waitnats:
@@ -73,5 +72,5 @@ logs:
 dblogs:
 	docker logs -f --tail 100 $(PJT_NAME)_$(DB_SVC)_1
 
-rmvol: down
-	docker volume rm $(PJT_NAME)_$(DB_VOL_NAME)
+rmvol:
+	docker-compose down -v
