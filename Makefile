@@ -1,4 +1,5 @@
 CWD = $(shell pwd)
+DC_FILE = docker-compose.yml
 SVC = post
 DB_SVC = post-db
 DB_NAME = post_DB
@@ -31,7 +32,7 @@ newsql:
 	migrate/migrate:latest create -ext sql -dir ./sql ${a}
 
 test:
-	docker-compose exec $(SVC) sh -c "go test -v -coverprofile=cover.out ./... && \
+	docker-compose -f $(DC_FILE) exec $(SVC) sh -c "go test -v -coverprofile=cover.out ./... && \
 	go tool cover -html=cover.out -o ./cover.html" && \
 	open ./src/cover.html
 
@@ -45,7 +46,7 @@ waitimage:
 
 waitdb: updb
 	docker run --rm --name dockerize --net $(NET) jwilder/dockerize \
-	-timeout 30s \
+	-timeout 60s \
 	-wait tcp://$(DB_SVC):3306
 
 waitnats:
@@ -58,19 +59,19 @@ migrate: waitdb
 	-path /sql/ -database "mysql://$(DB_USER):$(DB_PWD)@tcp($(DB_SVC):3306)/$(DB_NAME)" ${MIGRATE}
 
 up: migrate waitimage waitnats
-	docker-compose up -d $(SVC)
+	docker-compose -f $(DC_FILE) up -d $(SVC)
 
 updb:
-	docker-compose up -d $(DB_SVC)
+	docker-compose -f $(DC_FILE) up -d $(DB_SVC)
 
 build:
-	docker-compose build
+	docker-compose -f $(DC_FILE) build
 
 down:
-	docker-compose down
+	docker-compose -f $(DC_FILE) down
 
 exec:
-	docker-compose exec $(SVC) sh
+	docker-compose -f $(DC_FILE) exec $(SVC) sh
 
 logs:
 	docker logs -f --tail 100 $(PJT_NAME)_$(SVC)_1
@@ -79,5 +80,5 @@ dblogs:
 	docker logs -f --tail 100 $(PJT_NAME)_$(DB_SVC)_1
 
 rmvol:
-	docker-compose down -v
+	docker-compose -f $(DC_FILE) down -v
 
