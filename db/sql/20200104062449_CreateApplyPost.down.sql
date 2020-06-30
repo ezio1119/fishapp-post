@@ -1,1 +1,1 @@
-DROP TABLE `apply_post`;
+DROP TABLE `apply_posts`;

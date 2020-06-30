@@ -1,8 +1,6 @@
 package conf
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -23,30 +21,46 @@ type config struct {
 		AllowNativePasswords bool
 	}
 	Sv struct {
-		Timeout int64
-		Port    string
-		Debug   bool
+		Timeout         int64
+		Port            string
+		Debug           bool
+		DefaultPageSize int64
+		ImageChunkSize  int64
+	}
+	Nats struct {
+		URL        string
+		ClusterID  string
+		QueueGroup string
+	}
+	Gcs struct {
+		BucketName string
+	}
+	API struct {
+		ImageURL string `mapstructure:"image_url"`
 	}
 }
 
 var C config
 
 func init() {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
 
 	viper.SetConfigName("conf")
 	viper.SetConfigType("yml")
-	viper.AddConfigPath("conf")
+	viper.AddConfigPath(dir + "/conf")
+
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(err)
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	if err := viper.Unmarshal(&C); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 
 	spew.Dump(C)

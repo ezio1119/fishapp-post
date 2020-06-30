@@ -4,8 +4,12 @@
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [entries](entries.md) | 5 |  | BASE TABLE |
-| [posts](posts.md) | 6 |  | BASE TABLE |
+| [apply_posts](apply_posts.md) | 5 |  | BASE TABLE |
+| [outbox](outbox.md) | 8 |  | BASE TABLE |
+| [posts](posts.md) | 11 |  | BASE TABLE |
+| [posts_fish_types](posts_fish_types.md) | 5 |  | BASE TABLE |
+| [saga_instance](saga_instance.md) | 6 |  | BASE TABLE |
+| [schema_migrations](schema_migrations.md) | 2 |  | BASE TABLE |
 
 ## Relations
 

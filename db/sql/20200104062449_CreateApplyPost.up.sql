@@ -1,4 +1,4 @@
-CREATE TABLE `apply_post`(
+CREATE TABLE `apply_posts`(
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `post_id` INT(11) NOT NULL,
   `user_id` INT(11) NOT NULL,
@@ -9,4 +9,4 @@ CREATE TABLE `apply_post`(
   FOREIGN KEY (`post_id`) 
     REFERENCES posts(`id`)
     ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_ja_0900_as_cs;
+);
