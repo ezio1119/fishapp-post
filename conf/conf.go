@@ -32,9 +32,6 @@ type config struct {
 		ClusterID  string
 		QueueGroup string
 	}
-	Gcs struct {
-		BucketName string
-	}
 	API struct {
 		ImageURL string `mapstructure:"image_url"`
 	}
