@@ -18,7 +18,5 @@ nats:
   url: "nats-streaming:4223"
   clusterid: fishapp-cluster
   queuegroup: fishapp-post
-gcs:
-  bucketname: fishapp
 api:
   image_url: image:50051
